@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.16
+
+- Setzt den Standardzeitraum für KI-, Quantum- und Krypto-Meldungen auf die letzten 24 Stunden.
+- Öffnet 30-Tage-Kursverläufe am Handy als feste, abgedunkelte Dialoge mit Schließen-Schaltfläche; PC-Hover bleibt erhalten.
+- Ergänzt am Ende des Produktkatalogs dauerhaft „Artikel anlegen“, erhöht beim erneuten Antippen die vorhandene Menge und blendet die ungenutzten Kategorienfilter aus.
+- Macht Favoriten auf PC und Handy ein- und ausklappbar und gleicht den unteren Abstand der mobilen Navigation an den oberen an.
+- Sperrt mobile Finanzformulare als Dialoge mit dauerhaft erreichbaren Aktionen.
+
 ## 0.1.15
 
 - Korrigiert den Handy-Startknopf: „Start“ öffnet wieder das WG-Cockpit-Dashboard im Home-Assistant-Ingress.

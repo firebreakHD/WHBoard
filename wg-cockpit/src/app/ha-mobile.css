@@ -9,10 +9,10 @@
   body { overflow: hidden; }
   .app-layout { height: 100dvh; min-height: 0; }
   .main-area { height: 100dvh; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
-  .topbar { position: sticky; top: 0; z-index: 32; background: #faf8f1f2; backdrop-filter: blur(14px); }
+  .topbar { display: none !important; }
   .mobile-menu, .top-avatar { display: none !important; }
-  .page-container { padding: 16px 12px calc(62px + env(safe-area-inset-bottom)); }
-  .mobile-bottom-nav { position: fixed; z-index: 40; inset: auto 0 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); border-top: 1px solid #e9e4d9; background: #fffdf8f2; backdrop-filter: blur(16px); }
+  .page-container { padding: 8px 12px calc(62px + env(safe-area-inset-bottom)); }
+  .mobile-bottom-nav { position: fixed; z-index: 40; inset: auto 0 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; padding: 6px 8px; border-top: 1px solid #e9e4d9; background: #fffdf8f2; backdrop-filter: blur(16px); }
   .mobile-bottom-item { min-width: 0; min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: 11px; color: #6e7067; text-decoration: none; font-size: 10px; font-weight: 650; -webkit-tap-highlight-color: transparent; }
   .mobile-bottom-item.active { background: #e6f2ec; color: #08765a; }
   .mobile-bottom-item:active { background: #dcece4; }
@@ -84,9 +84,17 @@
   .debt-fast-button { min-height: 48px; padding: 8px 9px; gap: 5px; font-size: 11px; }
   .simple-entry { gap: 7px; }
   .entry-delete { width: 40px; height: 40px; }
+  .finance-form-scrim { position: fixed; inset: 0; z-index: 110; display: grid; place-items: center; overflow: hidden; padding: calc(8px + env(safe-area-inset-top)) 10px calc(8px + env(safe-area-inset-bottom)); background: #20251f78; overscroll-behavior: contain; }
+  .finance-form-dialog { display: flex; width: min(620px,100%); height: min(88dvh,760px); max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 16px); min-height: 0; }
+  .finance-form-panel { display: flex; flex: 1; flex-direction: column; width: 100%; min-height: 0; max-height: 100%; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 14px; border-radius: 18px; touch-action: pan-y; }
+  .finance-form-panel > .panel-heading { position: sticky; z-index: 2; top: -14px; flex: none; margin: -14px -14px 12px; padding: 14px 14px 10px; border-bottom: 1px solid var(--line); background: var(--card); }
+  .finance-form-panel > .modal-actions { position: sticky; z-index: 2; bottom: -14px; flex: none; margin: 12px -14px -14px; padding: 10px 14px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--card); box-shadow: 0 -8px 18px #00000008; }
+  .mobile-chart-scrim { position: fixed; z-index: 130; inset: 0; display: grid; place-items: center; padding: max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom)); background: #20251f88; overscroll-behavior: contain; }
+  .mobile-chart-dialog { width: min(420px,100%); max-height: 86dvh; overflow: auto; overscroll-behavior: contain; border: 1px solid var(--line); border-radius: 16px; background: var(--card); box-shadow: 0 18px 50px #0005; }
+  .mobile-chart-dialog .coin-history-popover,.mobile-chart-dialog .quantum-stock-popover { position: static; inset: auto; display: block; width: 100%; max-height: 86dvh; overflow: auto; border: 0; box-shadow: none; }
 }
 
-.ai-provider-controls { display: none; }
+@media (min-width: 761px) { .ai-provider-controls { display: none; } }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
