@@ -36,13 +36,16 @@ function upstreamPath(requestUrl, base) {
 
 function addIngressPrefix(text, base) {
   if (!base) return text;
-  const attrs = /((?:href|src|action|poster|data-src)\s*=\s*["'])\/(?!\/)/gi;
-  const quotedRoutes = new RegExp(`(["'\x60])\\/(?=(?:${routeNames})(?:\\/|[?#"'\x60]))`, "g");
-  const cssUrls = /url\(\s*\/(?!\/)/gi;
+  const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const alreadyPrefixed = new RegExp(`^${escapeRegExp(base)}(?:/|$)`);
+  const prefixPath = (value) => alreadyPrefixed.test(value) ? value : `${base}${value}`;
+  const attrs = /((?:href|src|action|poster|data-src)\s*=\s*["'])(\/(?!\/)[^"']*)/gi;
+  const quotedRoutes = new RegExp(`(["'\x60])(\\/(?:${routeNames})(?=\\/|[?#"'\x60])[^"'\x60]*)`, "g");
+  const cssUrls = /url\(\s*(["']?)(\/(?!\/)[^"')\s]+)\1\s*\)/gi;
   return text
-    .replace(attrs, (_match, start) => `${start}${base}/`)
-    .replace(quotedRoutes, (_match, quote) => `${quote}${base}/`)
-    .replace(cssUrls, `url(${base}/`);
+    .replace(attrs, (_match, start, path) => `${start}${prefixPath(path)}`)
+    .replace(quotedRoutes, (_match, quote, path) => `${quote}${prefixPath(path)}`)
+    .replace(cssUrls, (_match, quote, path) => `url(${quote}${prefixPath(path)}${quote})`);
 }
 
 const server = http.createServer((incoming, outgoing) => {

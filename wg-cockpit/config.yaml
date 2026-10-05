@@ -1,7 +1,7 @@
 name: WG Cockpit
 slug: wg_cockpit
 description: Gemeinsames Dashboard für WG-Finanzen, Einkauf und Berichte.
-version: 0.1.7
+version: 0.1.8
 startup: application
 boot: auto
 init: false
@@ -15,3 +15,7 @@ panel_title: WG Cockpit
 panel_admin: false
 map:
   - data:rw
+options:
+  sync_interval_seconds: 2
+schema:
+  sync_interval_seconds: "int(1,10)"

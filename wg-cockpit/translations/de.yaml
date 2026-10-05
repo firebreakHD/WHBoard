@@ -1,0 +1,6 @@
+configuration:
+  sync_interval_seconds:
+    name: Synchronisationsintervall
+    description: >-
+      Legt fest, wie häufig geöffnete Geräte Haushaltsdaten neu laden (1–10 Sekunden).
+      Der Home-Assistant-Ingress-Port 8099 ist fest vorgegeben und muss nicht geändert werden.
