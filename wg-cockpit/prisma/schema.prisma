@@ -1,0 +1,232 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+  VIEWER
+}
+enum AccountType {
+  PERSON
+  APARTMENT
+}
+enum BookingType {
+  EXPENSE
+  TRANSFER
+  SETTLEMENT
+  EXPECTED_PAYMENT
+}
+enum BookingStatus {
+  OPEN
+  PAID
+  CANCELLED
+}
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  DIRECT_DEBIT
+  IN_KIND
+  OTHER
+}
+enum SplitType {
+  EQUAL
+  PERCENT
+  CUSTOM
+  SINGLE
+}
+enum Recurrence {
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+enum ExpectedStatus {
+  OPEN
+  PAID
+  SKIPPED
+}
+
+model User {
+  id          String       @id @default(cuid())
+  displayName String
+  email       String?      @unique
+  role        Role         @default(USER)
+  dashboardConfig Json?
+  createdAt   DateTime     @default(now())
+  accounts    Account[]
+  shares      BookingShare[]
+  shortcuts   Shortcut[]
+  watchlist   WatchlistItem[]
+}
+
+model Account {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  type        AccountType
+  userId      String?   @unique
+  active      Boolean   @default(true)
+  user        User?     @relation(fields: [userId], references: [id])
+  paid        Booking[] @relation("Payer")
+  transfersFrom Booking[] @relation("TransferFrom")
+  transfersTo   Booking[] @relation("TransferTo")
+  templates   ExpenseTemplate[]
+  createdAt   DateTime  @default(now())
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  color     String    @default("#126c55")
+  icon      String?
+  active    Boolean   @default(true)
+  bookings  Booking[]
+  templates ExpenseTemplate[]
+}
+
+model ExpenseTemplate {
+  id          String       @id @default(cuid())
+  name        String
+  amountCents Int?
+  payerId     String
+  payer       Account      @relation(fields: [payerId], references: [id])
+  categoryId  String
+  category    Category     @relation(fields: [categoryId], references: [id])
+  splitType   SplitType    @default(EQUAL)
+  recurrence  Recurrence?
+  dueDay      Int?
+  participants Json
+  active      Boolean      @default(true)
+  expected    ExpectedPayment[]
+  bookings    Booking[]
+  shortcuts   Shortcut[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Shortcut {
+  id          String          @id @default(cuid())
+  name        String
+  icon        String          @default("bolt")
+  userId      String
+  user        User            @relation(fields: [userId], references: [id])
+  templateId  String?
+  template    ExpenseTemplate? @relation(fields: [templateId], references: [id])
+  dashboard   Boolean         @default(true)
+  sortOrder   Int             @default(0)
+  createdAt   DateTime        @default(now())
+}
+
+model Booking {
+  id            String       @id @default(cuid())
+  type          BookingType
+  status        BookingStatus @default(PAID)
+  title         String
+  amountCents   Int
+  currency      String       @default("EUR")
+  paymentMethod PaymentMethod?
+  date          DateTime
+  note          String?
+  payerId       String?
+  payer         Account?     @relation("Payer", fields: [payerId], references: [id])
+  fromAccountId String?
+  fromAccount   Account?     @relation("TransferFrom", fields: [fromAccountId], references: [id])
+  toAccountId   String?
+  toAccount     Account?     @relation("TransferTo", fields: [toAccountId], references: [id])
+  categoryId    String?
+  category      Category?    @relation(fields: [categoryId], references: [id])
+  templateId    String?
+  template      ExpenseTemplate? @relation(fields: [templateId], references: [id])
+  shares        BookingShare[]
+  expectedPayment ExpectedPayment?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  @@index([date])
+  @@index([type, status])
+}
+
+model BookingShare {
+  id        String  @id @default(cuid())
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User    @relation(fields: [userId], references: [id])
+  cents     Int
+  percent   Decimal? @db.Decimal(5, 2)
+  @@unique([bookingId, userId])
+}
+
+model ExpectedPayment {
+  id          String         @id @default(cuid())
+  templateId  String
+  template    ExpenseTemplate @relation(fields: [templateId], references: [id])
+  month       DateTime
+  title       String
+  amountCents Int?
+  status      ExpectedStatus @default(OPEN)
+  bookingId   String?        @unique
+  booking     Booking?       @relation(fields: [bookingId], references: [id])
+  createdAt   DateTime       @default(now())
+  @@unique([templateId, month])
+}
+
+model ShoppingItem {
+  id          String   @id @default(cuid())
+  name        String
+  category    String   @default("Sonstiges")
+  quantity    String   @default("1x")
+  note        String?
+  favorite    Boolean  @default(false)
+  checked     Boolean  @default(false)
+  checkedAt   DateTime?
+  createdById String?
+  createdAt   DateTime @default(now())
+}
+
+model MarketAsset {
+  id       String @id @default(cuid())
+  symbol   String @unique
+  name     String
+  kind     String
+  snapshots AssetSnapshot[]
+}
+
+model AssetSnapshot {
+  id          String     @id @default(cuid())
+  assetId     String
+  asset       MarketAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  priceCents  Int
+  change24h   Decimal    @db.Decimal(8, 3)
+  isDemo      Boolean    @default(false)
+  capturedAt  DateTime   @default(now())
+  @@index([assetId, capturedAt])
+}
+
+model MarketNews {
+  id          String   @id @default(cuid())
+  providerId  String
+  category    String
+  title       String
+  summary     String
+  sourceName  String
+  sourceUrl   String?
+  publishedAt DateTime
+  tags        Json
+  createdAt   DateTime @default(now())
+  @@unique([providerId, sourceName])
+  @@index([category, publishedAt])
+}
+
+model WatchlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assetId   String
+  createdAt DateTime @default(now())
+  @@unique([userId, assetId])
+}

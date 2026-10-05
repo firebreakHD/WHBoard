@@ -1,0 +1,6 @@
+import { NextResponse } from "next/server";
+import {readHousehold,updateHousehold} from "@/lib/server-state";
+export const dynamic="force-dynamic";export const runtime="nodejs";
+const allowed=new Set(["bookings","debtEvents","fixedCosts","shoppingItems","shoppingDone","accountBalance"]);
+export async function GET(){try{return NextResponse.json(await readHousehold())}catch{return NextResponse.json({error:"Haushaltsdaten können nicht gelesen werden."},{status:500})}}
+export async function PUT(request:Request){let body:unknown;try{body=await request.json()}catch{return NextResponse.json({error:"Ungültige JSON-Daten."},{status:400})}if(!body||typeof body!=="object"||!("key" in body)||typeof body.key!=="string"||!allowed.has(body.key)||!("value" in body))return NextResponse.json({error:"Unbekannter Datensatz."},{status:400});try{await updateHousehold(body.key,body.value);return NextResponse.json({ok:true})}catch{return NextResponse.json({error:"Haushaltsdaten konnten nicht gespeichert werden."},{status:500})}}

@@ -1,0 +1,2 @@
+import type { MetadataRoute } from "next";
+export default function manifest():MetadataRoute.Manifest{return{name:"WG Cockpit",short_name:"WG Cockpit",description:"Euer gemeinsamer WG-Alltag",start_url:"/",display:"standalone",background_color:"#f5f2e9",theme_color:"#126c55",lang:"de-AT",icons:[{src:"/icon.svg",sizes:"any",type:"image/svg+xml",purpose:"any"},{src:"/icon.svg",sizes:"any",type:"image/svg+xml",purpose:"maskable"}]}}

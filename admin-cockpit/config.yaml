@@ -1,0 +1,31 @@
+name: Admin Cockpit
+slug: admin_cockpit
+description: Separates Monitoring-Cockpit für Server, Docker, Home Assistant, NAS und Netzwerk.
+version: 0.1.1
+startup: application
+boot: auto
+init: false
+arch:
+  - amd64
+  - aarch64
+ingress: true
+ingress_port: 3001
+panel_icon: mdi:server-security
+panel_title: Admin Cockpit
+hassio_api: true
+hassio_role: default
+homeassistant_api: true
+map:
+  - data:rw
+options:
+  wg_cockpit_url: ""
+  portainer_url: ""
+  portainer_api_key: ""
+schema:
+  wg_cockpit_url: str
+  portainer_url: str
+  portainer_api_key: password
+ports:
+  3001/tcp: null
+ports_description:
+  3001/tcp: Lokaler Browserzugriff, optional

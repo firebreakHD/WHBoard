@@ -1,0 +1,6 @@
+import {NextResponse} from "next/server";
+export const dynamic="force-dynamic";
+export const runtime="nodejs";
+const symbols=new Set(["BTC","ETH","SOL","BNB","XRP","ADA","DOGE","AVAX"]);
+const cache=new Map<string,{at:number;points:{time:number;price:number}[]}>();
+export async function GET(request:Request){const symbol=new URL(request.url).searchParams.get("symbol")?.toUpperCase()||"";if(!symbols.has(symbol))return NextResponse.json({error:"Unbekannte Kryptowährung."},{status:400});const hit=cache.get(symbol);if(hit&&Date.now()-hit.at<5*60_000)return NextResponse.json({symbol,points:hit.points});try{const response=await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}EUR&interval=1d&limit=31`,{cache:"no-store",signal:AbortSignal.timeout(5000)});if(!response.ok)throw new Error("Quelle nicht erreichbar");const rows=await response.json() as unknown[][];const points=rows.map(row=>({time:Number(row[0]),price:Number(row[4])})).filter(point=>Number.isFinite(point.time)&&Number.isFinite(point.price));if(!points.length)throw new Error("Keine Kurswerte");cache.set(symbol,{at:Date.now(),points});return NextResponse.json({symbol,points},{headers:{"Cache-Control":"private, max-age=300"}})}catch{return NextResponse.json({error:"Monatsverlauf gerade nicht verfügbar."},{status:503})}}

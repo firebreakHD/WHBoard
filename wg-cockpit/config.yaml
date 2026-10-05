@@ -1,0 +1,25 @@
+name: WG Cockpit
+slug: wg_cockpit
+description: Gemeinsames Dashboard für WG-Finanzen, Einkauf und Berichte.
+version: 0.1.1
+startup: application
+boot: auto
+init: false
+arch:
+  - amd64
+  - aarch64
+ingress: true
+ingress_port: 3000
+panel_icon: mdi:home-heart
+panel_title: WG Cockpit
+panel_admin: false
+map:
+  - data:rw
+options:
+  admin_cockpit_url: ""
+schema:
+  admin_cockpit_url: str
+ports:
+  3000/tcp: null
+ports_description:
+  3000/tcp: Lokaler Browserzugriff, optional
