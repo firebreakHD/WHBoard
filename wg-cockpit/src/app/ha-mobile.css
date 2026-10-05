@@ -1,0 +1,21 @@
+@media (max-width: 760px) {
+  html { -webkit-text-size-adjust: 100%; }
+  .page-container { padding: 16px 12px calc(24px + env(safe-area-inset-bottom)); }
+  .mobile-menu, .icon-button { width: 44px; height: 44px; }
+  .button, .shortcut, .nav-item, .admin-link, .notification-item,
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+    min-height: 44px;
+  }
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+    font-size: 16px;
+  }
+  .shortcut { padding: 11px; }
+  .nav-item { padding-inline: 13px; }
+  .page-stack { gap: 14px; }
+  .panel { padding: 14px; }
+  .button { padding-inline: 13px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}

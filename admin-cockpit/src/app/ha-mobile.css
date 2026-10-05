@@ -1,0 +1,16 @@
+@media (max-width: 700px) {
+  html { -webkit-text-size-adjust: 100%; }
+  .admin-page { padding: 12px 11px calc(22px + env(safe-area-inset-bottom)); }
+  .admin-tab-groups { gap: 8px; }
+  .admin-tab-group { max-width: calc(100vw - 24px); }
+  .admin-tab { min-height: 44px; padding: 10px 12px; }
+  .refresh, button, a.details-link { min-height: 44px; }
+  button, input, select, textarea { touch-action: manipulation; }
+  input, select, textarea { font-size: 16px; }
+  .card { padding: 14px; }
+  .warning-item { min-height: 54px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
