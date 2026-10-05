@@ -4,15 +4,21 @@ import {useCallback,useEffect,useRef,useState} from "react";
 type StateMap=Record<string,unknown>;
 const listeners=new Set<()=>void>();
 const writeTimers=new Map<string,number>();
+const pendingWrites=new Set<string>();
+const localVersions=new Map<string,number>();
+const baseValues:StateMap={};
+const retryCounts=new Map<string,number>();
 let sharedState:StateMap|null=null;
 let loading:Promise<void>|null=null;
 let pollTimer:number|undefined;
 
 function notify(){listeners.forEach(listener=>listener())}
-async function loadSharedState(){if(loading)return loading;loading=fetch("/api/state",{cache:"no-store"}).then(async response=>{if(!response.ok)throw new Error("WG state load failed");const remote=await response.json() as StateMap;sharedState={...(sharedState||{}),...remote};notify()}).catch(()=>{sharedState=sharedState||{};notify()}).finally(()=>{loading=null});return loading}
-function persistKey(key:string){const old=writeTimers.get(key);if(old!==undefined)window.clearTimeout(old);const timer=window.setTimeout(()=>{writeTimers.delete(key);const value=sharedState?.[key];fetch("/api/state",{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify({key,value})}).catch(()=>{})},220);writeTimers.set(key,timer)}
+async function loadSharedState(){if(loading)return loading;loading=fetch("/api/state",{cache:"no-store",signal:AbortSignal.timeout(3000)}).then(async response=>{if(!response.ok)throw new Error("WG state load failed");const remote=await response.json() as StateMap;sharedState={...(sharedState||{})};for(const [key,value] of Object.entries(remote)){baseValues[key]=value;if(!pendingWrites.has(key))sharedState[key]=value}notify()}).catch(()=>{sharedState=sharedState||{};notify()}).finally(()=>{loading=null});return loading}
+async function flushKey(key:string){writeTimers.delete(key);const version=localVersions.get(key)||0;const value=sharedState?.[key];try{const response=await fetch("/api/state",{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify({key,value,baseValue:baseValues[key]??null}),signal:AbortSignal.timeout(5000)});if(!response.ok)throw new Error("WG state save failed");const result=await response.json() as {state?:StateMap};if(result.state){for(const [remoteKey,remoteValue] of Object.entries(result.state)){baseValues[remoteKey]=remoteValue;if(!pendingWrites.has(remoteKey))sharedState={...(sharedState||{}),[remoteKey]:remoteValue}}}retryCounts.delete(key);if((localVersions.get(key)||0)===version){pendingWrites.delete(key);if(result.state&&Object.prototype.hasOwnProperty.call(result.state,key))sharedState={...(sharedState||{}),[key]:result.state[key]};notify()}else scheduleFlush(key,220)}catch{const attempt=(retryCounts.get(key)||0)+1;retryCounts.set(key,attempt);scheduleFlush(key,Math.min(30000,1500*2**Math.min(attempt-1,4)))}}
+function scheduleFlush(key:string,delay:number){const existing=writeTimers.get(key);if(existing!==undefined)window.clearTimeout(existing);const timer=window.setTimeout(()=>void flushKey(key),delay);writeTimers.set(key,timer)}
+function persistKey(key:string){const old=writeTimers.get(key);if(old!==undefined)window.clearTimeout(old);pendingWrites.add(key);localVersions.set(key,(localVersions.get(key)||0)+1);scheduleFlush(key,220)}
 function refreshIfVisible(){if(document.visibilityState==="visible")void loadSharedState()}
-function beginPolling(){if(pollTimer!==undefined)return;window.addEventListener("focus",refreshIfVisible);pollTimer=window.setInterval(refreshIfVisible,30000)}
+function beginPolling(){if(pollTimer!==undefined)return;window.addEventListener("focus",refreshIfVisible);pollTimer=window.setInterval(refreshIfVisible,2500)}
 function stopPollingIfUnused(){if(listeners.size)return;if(pollTimer!==undefined){window.clearInterval(pollTimer);pollTimer=undefined;window.removeEventListener("focus",refreshIfVisible)}}
 
 export function useHouseholdState<T>(key:string,initial:T):[T,(next:T|((current:T)=>T))=>void,boolean]{

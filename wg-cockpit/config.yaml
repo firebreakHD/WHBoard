@@ -1,7 +1,7 @@
 name: WG Cockpit
 slug: wg_cockpit
 description: Gemeinsames Dashboard für WG-Finanzen, Einkauf und Berichte.
-version: 0.1.3
+version: 0.1.6
 startup: application
 boot: auto
 init: false
@@ -15,11 +15,3 @@ panel_title: WG Cockpit
 panel_admin: false
 map:
   - data:rw
-options:
-  admin_cockpit_url: ""
-schema:
-  admin_cockpit_url: str
-ports:
-  3000/tcp: null
-ports_description:
-  3000/tcp: Lokaler Browserzugriff, optional
