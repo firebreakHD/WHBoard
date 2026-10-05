@@ -15,13 +15,26 @@ den dynamischen HA-Pfad und akzeptiert nur Verbindungen vom Home-Assistant-Proxy
 
 ## Installation
 
-Kopiere beide Add-on-Ordner direkt in die Home-Assistant-Freigabe `addons`
-(beispielsweise nach `/addons/wg-cockpit` und `/addons/admin-cockpit`).
-Aktualisiere danach in Home Assistant den App-Store, installiere beide Add-ons
-und starte sie. Home Assistant baut die Images jeweils aus dem enthaltenen Dockerfile.
+Für GitHub muss der **Inhalt dieses Ordners** (also `repository.yaml`, `wg-cockpit/`
+und `admin-cockpit/`) im Stammverzeichnis des Repositorys liegen. Home Assistant
+liest Add-on-Repositories ab der Repository-Wurzel, nicht aus einem Unterordner wie
+`HA_Build/`.
 
-Die Verknüpfung zwischen den Portalen stellst du in den Optionen der Add-ons ein:
-Im WG Cockpit die URL des Admin Cockpit und im Admin Cockpit die URL des WG Cockpit.
+Nach einem Codewechsel:
+
+1. `HA_Addon/build.ps1` ausführen. Das baut beide Oberflächen, erhöht die
+   Patch-Versionen und exportiert die installierbaren Add-ons nach `HA_Build/`.
+2. Den Inhalt von `HA_Build/` in das Stammverzeichnis des GitHub-Repositorys
+   übernehmen und committen/pushen.
+3. In Home Assistant unter **Einstellungen → Apps → ⋮ → Repositories** das
+   Repository aktualisieren. Danach erscheint bei installierten Apps mit neuer
+   Versionsnummer **Aktualisieren**. Die Aktualisierung bleibt eine bewusste Aktion
+   in Home Assistant; ein Git-Push startet nicht ungefragt Container neu.
+
+Für einen lokalen Test können die beiden Add-on-Ordner direkt nach
+`/addons/wg-cockpit` und `/addons/admin-cockpit` kopiert werden; danach den App-Store
+aktualisieren und die Apps neu bauen/starten. Zwischen WG Cockpit und Admin Cockpit
+gibt es absichtlich keine Portal-Verknüpfung.
 
 Der Export enthält Quellcode und Build-Konfiguration, aber keine lokalen Daten,
 Abhängigkeiten, Build-Caches oder `.env`-Dateien.
