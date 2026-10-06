@@ -1,3 +1,7 @@
+## 0.1.58
+
+- Zeigt Liste, Favoriten und Produktkatalog in natürlicher Höhe ohne verschachtelte Scrollflächen; die Einkaufsseite scrollt wieder als eine zusammenhängende Seite.
+
 ## 0.1.57
 
 - Begrenzt lange Einkaufslisten, Favoriten und den Produktkatalog auf eigene Scrollbereiche; „Alle Artikel“ erhält mehr Platz und eine besser sichtbare Scrollleiste.
