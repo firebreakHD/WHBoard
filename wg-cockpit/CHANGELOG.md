@@ -1,3 +1,9 @@
+## 0.1.39
+
+- Trennt temporäre Bearbeitung per langem Drücken vom dauerhaften Produktkatalog-Bearbeitungsmodus am Stift.
+- Speichert temporäre Änderungen direkt in die aktuelle Einkaufsliste; bestehende Listeneinträge werden aktualisiert.
+- Ergänzt ein durchsuchbares Symbol-Popup mit 209 Produktsymbolen, Kategorien, passenden Vorschlägen und Web-Symbolen.
+
 ## 0.1.38
 
 - Bringt das Datenquellen-Fenster auf PC und Handy vollständig in den Vordergrund und sperrt die darunterliegende Ansicht bis zum Schließen.

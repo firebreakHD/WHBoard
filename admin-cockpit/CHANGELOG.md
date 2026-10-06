@@ -1,3 +1,7 @@
+## 0.1.38
+
+- Versionsangleichung für den gemeinsamen lokalen Home-Assistant-Repository-Build.
+
 ## 0.1.37
 
 - Versionsangleichung für den gemeinsamen lokalen Home-Assistant-Repository-Build.
