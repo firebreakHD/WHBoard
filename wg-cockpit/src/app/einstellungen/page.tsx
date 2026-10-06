@@ -5,6 +5,7 @@ import {PageHeading,Panel,SectionTitle} from "@/components/ui";
 import {useHouseholdState} from "@/lib/use-household-state";
 import {DataBackup} from "@/components/data-backup";
 import {formatMoneyInput,moneyInputProps,parseMoneyAmount} from "@/lib/money";
+import {APP_VERSION} from "@/lib/app-version";
 
 export type HouseholdPreferences={shoppingNotifications:boolean;fixedCostNotifications?:boolean;lowBalanceNotifications:boolean;marketCriticalNotifications:boolean;lowBalanceLimit:number;compactMode:boolean;reducedMotion:boolean;disableShoppingEditing:boolean;defaultPaymentMethod:string};
 const defaults:HouseholdPreferences={shoppingNotifications:true,fixedCostNotifications:true,lowBalanceNotifications:true,marketCriticalNotifications:true,lowBalanceLimit:100,compactMode:true,reducedMotion:false,disableShoppingEditing:false,defaultPaymentMethod:"Überweisung"};
@@ -19,7 +20,7 @@ export default function Einstellungen(){
   <Panel><div className="panel-heading"><SectionTitle title="Schnellbuchung" description="Vorgabe für neue Finanzbuchungen."/><Wallet size={18}/></div><label className="field-label">Zahlungsart<select value={preferences.defaultPaymentMethod} onChange={e=>setPreferences({...preferences,defaultPaymentMethod:e.target.value})}>{["Überweisung","Bar","Lastschrift","Sonstiges"].map(x=><option key={x}>{x}</option>)}</select></label><p className="setting-hint">Die Zahlungsart lässt sich bei jeder Buchung weiterhin ändern.</p></Panel>
   <Panel><div className="panel-heading"><SectionTitle title="Darstellung" description="Für schnelles Bedienen am Handy."/><Gauge size={18}/></div><SettingRow title="Kompakte Ansicht" detail="Weniger Abstand, mehr Inhalt pro Bildschirm." value={preferences.compactMode} onClick={()=>toggle("compactMode")}/><SettingRow title="Animationen überspringen" detail="Schaltet Zähler, Betragsflug und Übergänge ab." value={preferences.reducedMotion} onClick={()=>toggle("reducedMotion")}/><SettingRow title="Bearbeitung in der Einkaufsliste deaktivieren" detail="Blendet Stift und Löschen auf den Kacheln aus. Artikel verwalten bleibt als separater Bereich verfügbar." value={preferences.disableShoppingEditing} onClick={()=>toggle("disableShoppingEditing")}/></Panel>
   <Panel><SectionTitle title="WG-Mitglieder" description="Konten im Haushaltsbereich"/><div className="member-row"><span className="avatar">M</span><div><b>Marcel</b><small>WG-Mitglied</small></div></div><div className="member-row"><span className="avatar philip">P</span><div><b>Philip</b><small>WG-Mitglied</small></div></div><p className="setting-hint">Eure persönlichen Kontodaten werden nicht benötigt. Gemeinsame Daten bleiben auf dem WG Cockpit Server.</p></Panel>
-  <DataBackup/>
+  <DataBackup/><div className="settings-version" aria-label={`WG Cockpit Version ${APP_VERSION}`}><span>WG Cockpit</span><b>v{APP_VERSION}</b></div>
  </div></div>
 }
 function SettingRow({title,detail,value,onClick}:{title:string;detail:string;value:boolean;onClick:()=>void}){return <div className="setting-row"><div><b>{title}</b><small>{detail}</small></div><button className={`setting-switch ${value?"on":""}`} role="switch" aria-checked={value} aria-label={title} onClick={onClick}><i/></button></div>}
