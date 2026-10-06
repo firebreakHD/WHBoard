@@ -4,7 +4,7 @@ import {restoreHouseholdState} from "@/lib/server-state";
 export const dynamic="force-dynamic";
 export const runtime="nodejs";
 
-const allowed=new Set(["bookings","debtEvents","fixedCosts","fixedIncomes","shoppingItems","shoppingCatalog","shoppingFavorites","shoppingDone","shoppingCards","bookingTemplates","accountBalance","preferences"]);
+const allowed=new Set(["bookings","debtEvents","fixedCosts","fixedIncomes","shoppingItems","shoppingCatalog","shoppingFavorites","shoppingDone","shoppingCards","shoppingStartRun","bookingTemplates","accountBalance","preferences"]);
 
 export async function POST(request:Request){
  let body:unknown;

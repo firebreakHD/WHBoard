@@ -1,3 +1,45 @@
+## 0.1.55
+
+- Synchronisiert den laufenden Einkaufsablauf geräteübergreifend und behält ihn beim Schließen offen; erst der erfolgreiche Abschluss setzt „Einkauf starten“ wieder auf Grün.
+
+## 0.1.54
+
+- Ergänzt Kundenkarten um Kartenfoto per PC-Upload oder Handykamera; Bilder werden geräteübergreifend gespeichert und beim Löschen der Karte entfernt.
+- Zeigt ohne Ladenlayout-Sortierung direkt die Artikel in der gewählten Kachel- oder Listenansicht.
+
+## 0.1.53
+
+- Öffnet „Buchen“ bei gespeicherten Buchungen direkt im Buchungsfenster und übernimmt den optional hinterlegten Betrag.
+
+## 0.1.52
+
+- Ordnet Einkaufsschlüsse abhängig von der Zahlungsart dem Haushaltskonto oder dem Schuldenverlauf zu.
+- Öffnet aus Einkaufsbuchungen und übernommenen Einkäufen ein lesbares Artikelprotokoll in der eingestellten Kachel- oder Listenansicht.
+- Zeigt bei einem laufenden Einkauf „Einkauf fortsetzen“ orange an und prüft fehlende Artikelpreise vor dem Abschluss.
+- Zeigt beim Einkauf ohne Ladenlayout-Sortierung direkt die Produktkacheln oder Liste.
+
+## 0.1.51
+
+- Zeigt Artikel-Preisfelder im Einkaufsablauf und in der Bon-Prüfung dauerhaft an, ohne sie automatisch zu fokussieren.
+- Ignoriert leere oder 0-Preise bei der Summe.
+- Warnt bei teilweise ausgefüllten Artikelpreisen und springt kurz rot markiert zum ersten fehlenden Preis.
+
+## 0.1.50
+
+- Passt Fotoaufnahme und Upload-Aktion optisch an die WG-Cockpit-Buttons an.
+- Zeigt beim Einkaufsstart als Käufer nur noch Marcel und Philip.
+- Markiert beim Abschließen einer Kategorie alle noch offenen Artikel als erledigt.
+
+## 0.1.49
+
+- Stellt das Videoelement bereits vor Freigabe des Kamerastreams bereit, damit die mobile Live-Vorschau zuverlässig startet.
+
+## 0.1.48
+
+- Öffnet „Per Bon eingeben“ auf dem PC direkt mit der Dateiauswahl.
+- Zeigt am Handy einen Live-Kameravorschaubildschirm mit Fotoaufnahme und separatem Foto-Upload.
+- Stoppt die Kamera nach der Aufnahme oder beim Schließen des Dialogs.
+
 ## 0.1.47
 
 - Ergänzt „Per Bon eingeben“ mit Foto/Upload und lokaler OCR-Erkennung für deutsche Kassenbons.
