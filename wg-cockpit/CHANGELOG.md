@@ -1,3 +1,7 @@
+## 0.1.57
+
+- Begrenzt lange Einkaufslisten, Favoriten und den Produktkatalog auf eigene Scrollbereiche; „Alle Artikel“ erhält mehr Platz und eine besser sichtbare Scrollleiste.
+
 ## 0.1.56
 
 - Bietet beim Einkaufsabschluss Bar und Karte persönlich als Schulden sowie Karte Wohnung als vorausgewählte WG-Ausgabe.
