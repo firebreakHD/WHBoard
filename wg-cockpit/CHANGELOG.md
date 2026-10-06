@@ -1,8 +1,21 @@
 # Changelog
 
-## 0.1.21
+## 0.1.24
+
+- Reserviert zwei Kachelreihen für die Einkaufsliste, damit Favoriten und Katalog beim Wechsel von null auf einen Artikel an ihrer Position bleiben.
+
+## 0.1.23
+
+- Fixiert das Scrollverhalten der Einkaufsliste: Hinzufügen und Entfernen springen nicht mehr automatisch; Favoriten und Produktkatalog scrollen jeweils im eigenen Bereich.
+- Ergänzt beim Speichern eines bearbeiteten Katalogprodukts den Artikel direkt zur Einkaufsliste.
+- Klappt die Icon-Auswahl standardmäßig ein, rückt Kategorie und Notiz nach unten und zeigt farbige Prioritäten samt Symbol am Produkt.
+- Zeigt den Bearbeitungsstift nur im Katalog und verankert die Suche dauerhaft über der mobilen Navigation.
+
+## 0.1.22
 
 - Repariert das Hinzufügen von Einkaufsartikeln und „Artikel anlegen“ in Home-Assistant-Webviews ohne `crypto.randomUUID()`; die IDs funktionieren jetzt auch in unsicheren Browser-Kontexten.
+
+## 0.1.21
 
 ## 0.1.19
 
