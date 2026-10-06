@@ -1,3 +1,9 @@
+## 0.1.56
+
+- Bietet beim Einkaufsabschluss Bar und Karte persönlich als Schulden sowie Karte Wohnung als vorausgewählte WG-Ausgabe.
+- Macht gespeicherte Buchungsvorlagen durch Antippen des Namens bearbeitbar.
+- Verhindert am Handy horizontales Seitenwischen und das Zurückfedern der Einkaufsseite.
+
 ## 0.1.55
 
 - Synchronisiert den laufenden Einkaufsablauf geräteübergreifend und behält ihn beim Schließen offen; erst der erfolgreiche Abschluss setzt „Einkauf starten“ wieder auf Grün.
