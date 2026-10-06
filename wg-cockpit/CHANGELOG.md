@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.1.31
+
+- Ergänzt für ältere ausgewählte Monate „Nachträglich buchen“ mit Geld-rein/Geld-raus-Auswahl, vorausgewähltem Datum und Kalender.
+
+## 0.1.30
+
+- Formatiert Geldbeträge bei Eingabe, Einfügen und im Kontoauszugsimport einheitlich.
+
+## 0.1.29
+
+- Formatiert eingegebene und eingefügte Geldbeträge einheitlich im Euroformat.
+
+## 0.1.28
+
+- Berechnet den Wohnungskontostand aus den Buchungen des ausgewählten Monats ab 0 € und rechnet aktive fixe Einnahmen und Ausgaben automatisch ein.
+- Startet neue Haushaltsdaten ohne Beispielbuchungen, Schulden oder Einkaufslisten-Artikel; entfernt den Demo-Schuldenhinweis.
+- Formatiert eingegebene und eingefügte Geldbeträge einheitlich im Euroformat.
+- Entfernt Erinnerungen an Fixposten, die automatisch im Monatsplan berücksichtigt werden.
+
 ## 0.1.24
 
 - Reserviert zwei Kachelreihen für die Einkaufsliste, damit Favoriten und Katalog beim Wechsel von null auf einen Artikel an ihrer Position bleiben.

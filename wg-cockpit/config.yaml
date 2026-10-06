@@ -1,7 +1,7 @@
 name: WG Cockpit
 slug: wg_cockpit
 description: Gemeinsames Dashboard für WG-Finanzen, Einkauf und Berichte.
-version: 0.1.25
+version: 0.1.31
 startup: application
 boot: auto
 init: false
