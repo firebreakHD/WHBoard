@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.18
+
+- Macht die mobilen Buchungs- und Schuldenfenster blickdicht und nahezu bildschirmfüllend; Abbrechen und „Zeile buchen“ beziehungsweise „Schuld eintragen“ bleiben unten angedockt.
+- Verankert die Einkaufssuche direkt über der mobilen Navigation und verhindert seitliches Überstehen von Reitern, Formularen und Zeilen.
+- Hebt „Geld rein“ dezent grün und „Geld raus“ dezent rot hervor.
+- Startet den lokalen Entwickler-Modus mit Webpack ohne Source Maps, damit Next.js in OneDrive nicht an Turbopack-Cache-Schreibfehlern hängen bleibt.
+
 ## 0.1.16
 
 - Setzt den Standardzeitraum für KI-, Quantum- und Krypto-Meldungen auf die letzten 24 Stunden.
