@@ -1,3 +1,3 @@
 "use client";
 import {useEffect} from "react";
-export function PwaRegistration(){useEffect(()=>{if("serviceWorker" in navigator)navigator.serviceWorker.register("/service-worker.js").catch(()=>{})},[]);return null}
+export function PwaRegistration(){useEffect(()=>{if(!(typeof navigator!=="undefined"&&"serviceWorker" in navigator))return;const ingress=window.location.pathname.match(/^(\/api\/hassio_ingress\/[A-Za-z0-9_-]+)/);const base=ingress?.[1]||"";const workerUrl=`${base}/service-worker.js`;const scope=`${base}/`;void navigator.serviceWorker.getRegistrations().then(async registrations=>{for(const registration of registrations){const script=registration.active?.scriptURL||registration.waiting?.scriptURL||registration.installing?.scriptURL||"";if(base&&new URL(registration.scope).pathname==="/"&&new URL(script).pathname==="/service-worker.js")await registration.unregister()}await navigator.serviceWorker.register(workerUrl,{scope})}).catch(()=>{})},[]);return null}

@@ -112,6 +112,26 @@
 
 @media (min-width: 761px) { .ai-provider-controls { display: none; } }
 
+@media (max-width: 760px) {
+  html, body, .app-layout, .main-area { width: 100%; max-width: 100%; overflow-x: hidden; }
+  .page-container, .page-stack, .page-heading, .panel, .panel-heading, .content-grid,
+  .dashboard-grid, .shopping-layout, .shopping-grid, .bring-board, .bring-tile-grid,
+  .fixed-list, .fixed-row, .fixed-income-row, .quick-fields, .recipient-field,
+  .finance-tabs, .finance-summary, .finance-flow, .finance-subtabs, .finance-month-panel,
+  .budget-analysis, .budget-history-row { min-width: 0; max-width: 100%; }
+  .finance-tabs, .finance-subtabs { display: flex; flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
+  .finance-tabs::-webkit-scrollbar, .finance-subtabs::-webkit-scrollbar { display: none; }
+  .finance-tabs > button, .finance-subtabs > button { flex: 0 0 auto; }
+  .fixed-row, .fixed-income-row { overflow: hidden; }
+  .fixed-row input, .fixed-income-row input, .quick-fields input, .quick-fields select,
+  .quick-fields textarea, .panel-heading select { width: 100%; min-width: 0; max-width: 100%; }
+  .page-heading > *, .panel-heading > *, .quick-fields > *, .fixed-row > *, .fixed-income-row > * { min-width: 0; }
+  .panel-heading, .page-heading { overflow-wrap: anywhere; }
+  .panel-heading button, .page-heading button { flex-shrink: 0; }
+  .finance-form-dialog, .finance-form-panel { min-width: 0; max-width: 100%; }
+  .finance-form-panel > .modal-actions { position: sticky; bottom: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }

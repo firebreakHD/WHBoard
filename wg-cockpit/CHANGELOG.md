@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.19
+
+- Behebt nicht reagierende Klicks nach Ingress- und Offline-Cache-Fehlern: der Service Worker ist auf den WG-Cockpit-Ingress begrenzt, cached nur Navigationen und liefert niemals HTML als Ersatz für Skripte oder API-Daten aus.
+- Verhindert seitliches Überstehen auf schmalen Displays in Finanzreitern, Formularen, Fixkostenzeilen und Überschriften.
+
 ## 0.1.18
 
 - Macht die mobilen Buchungs- und Schuldenfenster blickdicht und nahezu bildschirmfüllend; Abbrechen und „Zeile buchen“ beziehungsweise „Schuld eintragen“ bleiben unten angedockt.
