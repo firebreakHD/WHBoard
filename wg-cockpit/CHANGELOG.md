@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.21
+
+- Repariert das Hinzufügen von Einkaufsartikeln und „Artikel anlegen“ in Home-Assistant-Webviews ohne `crypto.randomUUID()`; die IDs funktionieren jetzt auch in unsicheren Browser-Kontexten.
+
 ## 0.1.19
 
 - Behebt nicht reagierende Klicks nach Ingress- und Offline-Cache-Fehlern: der Service Worker ist auf den WG-Cockpit-Ingress begrenzt, cached nur Navigationen und liefert niemals HTML als Ersatz für Skripte oder API-Daten aus.
