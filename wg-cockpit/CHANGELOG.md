@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.33
+
+- Ersetzt die dauerhaft sichtbare mobile Einkaufssuche durch ein aufklappbares Suchfeld am Listenanfang; Suche klappt nach Hinzufügen oder Bearbeiten wieder ein.
+- Ergänzt gemeinsam gespeicherte WG-Kundenkarten mit Code kopieren und Entfernen.
+- Ergänzt den Tab „Vorlagen“ für variable, wiederkehrende Buchungen wie Strom.
+- Öffnet das WG-Dashboard über die mobile Navigation ohne vollständigen Seitenneuladevorgang und ergänzt einen allgemeinen Einstellungszugang.
+
+## 0.1.32
+
+- Wählt bei „Geld rein“ automatisch Überweisung als Zahlungsart.
+
 ## 0.1.31
 
 - Ergänzt für ältere ausgewählte Monate „Nachträglich buchen“ mit Geld-rein/Geld-raus-Auswahl, vorausgewähltem Datum und Kalender.

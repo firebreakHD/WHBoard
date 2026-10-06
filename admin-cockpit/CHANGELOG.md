@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.32
+
+- Aktualisiert die Add-on-Version.
+
+## 0.1.31
+
+- Aktualisiert die Add-on-Version.
+
 ## 0.1.30
 
 - Aktualisiert die Add-on-Version; das Admin Cockpit kann das private Repository reparieren und neu einlesen.
