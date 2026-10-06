@@ -1,3 +1,33 @@
+## 0.1.47
+
+- Ergänzt „Per Bon eingeben“ mit Foto/Upload und lokaler OCR-Erkennung für deutsche Kassenbons.
+- Lässt erkannte Artikel, Mengen, Preise, Laden und Datum vor der Buchung prüfen und korrigieren.
+- Speichert den Bon getrennt von den synchronisierten Haushaltsdaten und verknüpft ihn mit der Finanzzeile.
+- Öffnet bei Klick auf die Einkaufsbuchung Artikelübersicht und Kassenzettel; beim Löschen wird auch der Beleg entfernt.
+- Entfernt die globale Preise-Checkbox; Preise erscheinen erst, wenn sie eingegeben oder erkannt wurden.
+
+## 0.1.43
+
+- Erstellt beim Einkaufsabschluss eine löschbare Haushaltskonto-Ausgabe mit Datum, Laden, Käufer, Zahlungsart und Artikeln.
+- Übernimmt die Summe erfasster Artikelpreise automatisch als Buchungsbetrag.
+- Behält den optionalen Einkaufsablauf bei und zeigt seinen Start als kleine grüne Aktion neben der Suche.
+- Ergänzt den gemeinsamen Kachel- und Listenmodus und behebt die abgeschnittene Symbolkategorien-Leiste.
+## 0.1.42
+
+- Fügt einen optionalen, standardmäßig deaktivierten Einkaufsablauf mit Laden, Käufer, Fortschritt und Abschluss hinzu.
+- Platziert „Einkauf starten“ als kleine grüne Aktion neben Suche und Kundenkarten.
+- Ergänzt eine gemeinsame Kachel- oder Listenansicht für Favoriten, Produktkatalog und Einkaufsablauf.
+- Hält die Symbolkategorien sichtbar und begrenzt das Scrollen im Symbol-Popup auf die Trefferliste.
+
+## 0.1.41
+
+- Zeigt aktive Prioritäten im Bereich Alle Artikel einmalig als dezente Symbole ohne rote Kachelumrandung.
+- Übernimmt Produktprioritäten beim Hinzufügen in die Einkaufsliste.
+- Entfernt eine reservierte Leerzeile oberhalb der Einkaufsliste.
+## 0.1.40
+
+- Übernimmt gespeicherte Prioritäten beim Hinzufügen eines Katalogprodukts in die Einkaufsliste.
+
 ## 0.1.39
 
 - Trennt temporäre Bearbeitung per langem Drücken vom dauerhaften Produktkatalog-Bearbeitungsmodus am Stift.
@@ -33,3 +63,8 @@
 - Behebt die mobile Start-Navigation unter Home Assistant Ingress: „Start“ öffnet wieder das WG-Dashboard.
 - Zeigt den Einstellungszugang dauerhaft in der oberen Leiste.
 - Macht das Formular zum Anlegen weiterer WG-Kundenkarten nach der ersten Karte einklappbar.
+
+
+
+
+

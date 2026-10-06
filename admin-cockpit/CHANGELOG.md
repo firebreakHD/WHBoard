@@ -1,3 +1,14 @@
+## 0.1.42
+
+- Version im gemeinsamen Home-Assistant-Build angeglichen.
+
+## 0.1.40
+
+- Versionsangleichung für den gemeinsamen lokalen Home-Assistant-Repository-Build.
+## 0.1.39
+
+- Versionsangleichung für den gemeinsamen lokalen Home-Assistant-Repository-Build.
+
 ## 0.1.38
 
 - Versionsangleichung für den gemeinsamen lokalen Home-Assistant-Repository-Build.
@@ -15,3 +26,4 @@
 ## 0.1.35
 
 - Aktualisiert die Add-on-Version für die gemeinsame Repository-Veröffentlichung.
+
