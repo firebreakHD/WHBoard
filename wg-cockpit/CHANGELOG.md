@@ -1,3 +1,10 @@
+## 0.1.59
+
+- Stellt den Bearbeitungsstift auch bei Favoriten dar.
+- Ergänzt Schuld-Rückzahlungen um 15 €, 25 € und den exakten Restbetrag.
+- Setzt für eine Vorlage „Tanken“ ohne Betrag den Richtwert von 55,11 € für 30 l Super 95.
+- Zeigt manuelle Buchungen auch dann im Haushaltskonto, wenn ihr Name einer Fixkosten- oder Fixeinnahmen-Vorlage entspricht; Dashboard und Monatsverlauf zeigen dieselben Bewegungen.
+
 ## 0.1.58
 
 - Zeigt Liste, Favoriten und Produktkatalog in natürlicher Höhe ohne verschachtelte Scrollflächen; die Einkaufsseite scrollt wieder als eine zusammenhängende Seite.

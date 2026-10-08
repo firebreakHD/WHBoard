@@ -153,7 +153,7 @@ export default function Einkauf(){
         <button className="suggestion-add" {...(!preferences.disableShoppingEditing?mobileEditPress(()=>editTemporarily(p)):{})} onClick={()=>addCatalog(p)} aria-label={listed?`${p.name} schon auf der Liste, Menge ${listed.qty}; antippen erhöht die Menge; länger halten zum Bearbeiten`:`${p.name} zur Einkaufsliste hinzufügen; länger halten zum Bearbeiten`}>
         <span className="tile-emoji"><ProductIcon value={p.icon}/></span><b>{p.name}</b><small>{p.cat}</small>{listed&&<span className="suggestion-added-pill">Schon drauf · {listed.qty}</span>}
        </button>
-       <PriorityBadges priority={p.priority}/>
+        <PriorityBadges priority={p.priority}/>{!preferences.disableShoppingEditing&&<button className="tile-pencil" onClick={()=>editCatalog(p)} aria-label={`${p.name} bearbeiten`} title="Produkt bearbeiten"><Pencil size={16}/></button>}
       </article>;
      })}</div> : <div className="favorite-empty">Noch keine Favoriten</div>}
     </div>
