@@ -1,3 +1,25 @@
+## 0.1.89
+
+- Erweitert die Rezeptsuche über zusätzliche Seiten der Cooklang Federation und mehrere Suchvarianten; bis zu 180 passende Treffer werden zusammengeführt.
+- Sortiert genaue Titelübereinstimmungen vor breiteren Rezeptvarianten.
+
+## 0.1.87
+
+- Ergänzt weitere deutsche Zutatenzuordnungen und übersetzt Zubereitungszusätze bei Mengen.
+- Bereinigt Rezeptschritte, damit Nummerierungen nicht doppelt als eigener Schritt erscheinen.
+
+## 0.1.86
+
+- Verbessert deutsche Rezeptnamen und Suchbegriffe samt zusätzlichen passenden Treffern aus zwei kostenlosen Rezeptquellen.
+- Ergänzt deutsche Zutaten- und Mengenbezeichnungen sowie klar strukturierte Kochschritte.
+
+## 0.1.85
+
+- Ermöglicht die deutsche Rezeptsuche mit passenden englischen Suchvarianten und zusätzlicher Suche bei DummyJSON.
+- Übersetzt Rezeptnamen, Zutaten, Mengen und Zubereitungsschritte nach Möglichkeit ins Deutsche.
+- Ergänzt den Bereich „Könntest du schon haben“ und einen Tab für bereits zur Einkaufsliste übernommene Rezepte.
+- Passt Rezeptkarten und Zubereitungsschritte an das WG-Cockpit-Design an.
+
 ## 0.1.84
 
 - Vereinigt Rezepte und Prospekte unter dem Kompass-Button in einer Entdecken-Ansicht mit gespeicherten Tabs.
