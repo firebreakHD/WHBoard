@@ -1,3 +1,9 @@
+## 0.1.93
+
+- Ergänzt eine allgemeine Produktsuche mit normalen Onlinepreisen mehrerer Händler; das Suchfeld öffnet unter der Überschrift.
+- Sortiert Produkte nach Marke und Namen, vergleicht Händlerpreise je Produkt und markiert den günstigsten Treffer sowie den niedrigsten Einheitspreis.
+- Lässt den Bereich mit Wochenangeboten separat und zeigt die Abweichung zwischen Onlinepreis und Filialpreis transparent an.
+
 ## 0.1.92
 
 - Übersetzt auch Mengen und Zubereitungsangaben direkt in der Rezeptansicht lesbar ins Deutsche.
