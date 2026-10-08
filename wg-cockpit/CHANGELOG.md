@@ -1,3 +1,16 @@
+## 0.1.101
+
+- Verhindert Mengen von 0 bei manuellem Hinzufügen, Bearbeiten, Rezeptzutaten, Belegen und beim Anpassen im Einkaufsmodus.
+- Vereinfacht die Produktsuche: Tippen fügt 1 hinzu, erneutes Tippen erhöht die Menge; separate Mengen- und Hakenbuttons entfallen.
+- Zeigt Prospekte erst, wenn aktuelle lesbare Bildseiten verfügbar sind, prüft diese bei Standortänderungen neu und entfernt leere Händlerkarten.
+- Bindet die echten Nah&Frisch-Wochenprospektbilder ein und macht sie direkt blätterbar; neue Seiten werden regelmäßig von der offiziellen Quelle geholt.
+- Aktualisiert Prospekte und Wochenangebote während der geöffneten Ansicht automatisch alle sechs Stunden.
+- Stellt die allgemeine Produktsuche über den Standortbereich.
+
+## 0.1.98
+
+- Ergänzt „Pull to refresh“ bei Rezepten: Am oberen Listenrand nach unten ziehen lädt neue Vorschläge und setzt die Ansicht weich zurück.
+- Lässt die Rezeptsuche live während der Eingabe suchen; das Aktualisieren-Symbol steht am PC neben dem Suchfeld und am Handy übernimmt das Herunterziehen.
 ## 0.1.97
 
 - Zeigt bei Wochenangeboten den aktuellen Listenbestand und erlaubt weiteres Hinzufügen; entfernt Favoriten und den Günstigsten-Hinweis aus dem Angebotsraster.
@@ -289,6 +302,7 @@
 - Behebt die mobile Start-Navigation unter Home Assistant Ingress: „Start“ öffnet wieder das WG-Dashboard.
 - Zeigt den Einstellungszugang dauerhaft in der oberen Leiste.
 - Macht das Formular zum Anlegen weiterer WG-Kundenkarten nach der ersten Karte einklappbar.
+
 
 
 

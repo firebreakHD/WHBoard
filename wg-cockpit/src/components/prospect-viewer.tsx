@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, ExternalLink, Heart, LoaderCircle, Share2, X, ZoomIn, ZoomOut } from "lucide-react";
 
 export type ProspectViewerRetailer = { id: string; name: string; url: string };
-const imageFlyerRetailers = new Set(["hofer", "spar", "eurospar", "interspar", "billa", "billa-plus", "lidl", "penny", "dm", "bipa"]);
+const imageFlyerRetailers = new Set(["hofer", "spar", "eurospar", "interspar", "billa", "billa-plus", "lidl", "penny", "dm", "bipa", "nahundfrisch"]);
 type PageData = { image: string; pageCount: number; title: string };
 
 export function ProspectViewer({ retailer, location, favorite, onFavorite, onClose, showFavorite=true }: {

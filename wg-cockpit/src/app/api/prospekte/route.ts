@@ -7,6 +7,7 @@ type FlyerInfo = { publication: string; pageCount: number; image: string; title:
 const cache = new Map<string, { value: FlyerInfo; expires: number }>();
 const publicationLists = new Map<string, { value: PublitasPublication[]; expires: number }>();
 const publicationData = new Map<string, { value: PublitasData; expires: number }>();
+const nahUndFrischFlyers = new Map<string,{images:string[];expires:number}>();
 const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36";
 type PublitasPublication = { slug: string; title?: string; onlineAt?: string; url?: string };
 type PublitasData = { config?: { description?: string; publicationTitle?: string }; spreads?: { pages?: string[] }[] };
@@ -67,6 +68,19 @@ async function selectedPublication(retailer: string, location: string): Promise<
 }
 
 async function getFlyerInfo(retailer: string, page: number, location: string): Promise<FlyerInfo> {
+  if(retailer==="nahundfrisch"){
+    let images=nahUndFrischFlyers.get("current")?.images;
+    if(!images|| (nahUndFrischFlyers.get("current")?.expires??0)<=Date.now()){
+      const response=await fetch("https://www.nahundfrisch.at/de/aktuelles/angebote-der-woche",{headers:{"user-agent":USER_AGENT,accept:"text/html"},cache:"no-store"});
+      if(!response.ok)throw new Error("Das aktuelle Nah&Frisch-Flugblatt ist gerade nicht erreichbar.");
+      const html=await response.text();
+      images=[...new Set([...html.matchAll(/(?:src|href)="([^"]*\/media\/cache\/resize_w500\/Angebote_der_Woche\/[^"]+?\.(?:png|jpe?g|webp))(?:\?[^"]*)?"/gi)].map(match=>new URL(match[1].replace(/&amp;/g,"&"),"https://www.nahundfrisch.at").toString()))];
+      if(!images.length)throw new Error("Aktuell sind keine lesbaren Nah&Frisch-Prospektseiten veröffentlicht.");
+      nahUndFrischFlyers.set("current",{images,expires:Date.now()+30*60_000});
+    }
+    if(page>images.length)throw new Error("Die angeforderte Nah&Frisch-Prospektseite ist nicht verfügbar.");
+    return{publication:"https://www.nahundfrisch.at/de/aktuelles/angebote-der-woche",pageCount:images.length,image:images[page-1],title:"Angebote der Woche · Nah&Frisch"};
+  }
   const { group, slug, title: listedTitle } = await selectedPublication(retailer, location);
   const cacheKey = `${group}:${slug}:${page}`;
   const cached = cache.get(cacheKey);

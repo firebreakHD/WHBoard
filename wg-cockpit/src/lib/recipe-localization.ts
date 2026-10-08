@@ -33,6 +33,7 @@ export function normalizeRecipeShoppingQuantity(raw:string){
   if(!match)return "1 Stück";
   const numberParts=match[1].trim().split(/\s+/);const fraction=numberParts.pop()!;let amount:number;
   if(fraction.includes("/")){const [numerator,denominator]=fraction.split("/").map(Number);amount=(Number(numberParts[0])||0)+(denominator?numerator/denominator:0)}else amount=(Number(numberParts[0])||0)+Number(fraction.replace(",","."));
+  if(!Number.isFinite(amount)||amount<=0)amount=1;
   const unit=match[2].trim().toLocaleLowerCase("de").replace(/[.]/g,"");
   const format=(number:number)=>new Intl.NumberFormat("de-AT",{maximumFractionDigits:3}).format(number);
   if(!unit||/^(?:x|stk|stück|stueck|piece|pieces|pc|pcs|item|items|clove|cloves|zehe|zehen|dose|dosen|can|cans|packet|packets|pck|päckchen|paeckchen)$/.test(unit))return `${format(amount)} Stück`;
