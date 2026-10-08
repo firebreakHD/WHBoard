@@ -1,3 +1,7 @@
+## 0.1.77
+
+- Zeigt Prospektseiten standardmäßig etwas kleiner mit sichtbarem Rand; Zoom-out ist bis 70 % möglich, damit ganze Seiten leichter ins Bild passen.
+
 ## 0.1.76
 
 - Blendet am Handy die untere Hauptnavigation aus, solange ein Prospekt geöffnet ist, und zeigt den Prospekt bildschirmfüllend an.

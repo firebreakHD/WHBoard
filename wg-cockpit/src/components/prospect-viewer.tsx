@@ -20,12 +20,12 @@ export function ProspectViewer({ retailer, location, favorite, onFavorite, onClo
   const [image, setImage] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(0.9);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [direction, setDirection] = useState<"next" | "previous">("next");
   const [external, setExternal] = useState(false);
   const pageRef = useRef<HTMLElement>(null);
-  const zoomRef = useRef(1);
+  const zoomRef = useRef(0.9);
   const panRef = useRef({ x: 0, y: 0 });
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const gesture = useRef<
@@ -38,7 +38,7 @@ export function ProspectViewer({ retailer, location, favorite, onFavorite, onClo
   const zoomed = zoom > 1.001;
 
   function setZoomLevel(value: number) {
-    const next = Math.max(1, Math.min(3, Math.round(value * 100) / 100));
+    const next = Math.max(0.7, Math.min(3, Math.round(value * 100) / 100));
     zoomRef.current = next;
     setZoom(next);
     if (next <= 1) { panRef.current = { x: 0, y: 0 }; setPan({ x: 0, y: 0 }); }
@@ -150,8 +150,8 @@ export function ProspectViewer({ retailer, location, favorite, onFavorite, onClo
 
   const changePage = useCallback((next: number) => {
     if (loading || navigationLock.current || zoomed || next < 1 || next > pageCount || next === page) return;
-    setZoomLevel(1);
-    setPanPosition(0, 0, 1);
+    setZoomLevel(0.9);
+    setPanPosition(0, 0, 0.9);
     setDirection(next > page ? "next" : "previous");
     navigationLock.current = true;
     void loadPage(next).finally(() => { navigationLock.current = false; });
@@ -196,7 +196,7 @@ export function ProspectViewer({ retailer, location, favorite, onFavorite, onClo
       {external ? <div className="prospect-viewer-fallback"><div className="prospect-viewer-fallback-copy"><b>Prospekt direkt beim Händler öffnen</b><span>Für diesen Händler ist kein frei zugänglicher Bildseiten-Feed verfügbar.</span><a className="button button-primary" href={retailer.url} target="_blank" rel="noreferrer">Offizielle Quelle öffnen <ExternalLink size={15}/></a></div></div> : <>
         <main ref={pageRef} className={`prospect-viewer-page ${zoomed ? "is-zoomed" : ""}`} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerEnd} onPointerCancel={pointerEnd}>
           {loading ? <div className="prospect-viewer-loading"><LoaderCircle size={24} className="prospect-viewer-spinner"/><span>Seite wird geladen …</span></div> : error ? <div className="prospect-viewer-loading prospect-viewer-error"><span>{error}</span><a className="button button-secondary" href={retailer.url} target="_blank" rel="noreferrer">Originalprospekt öffnen <ExternalLink size={14}/></a></div> : <img key={image} className={`prospect-flyer-image slide-${direction}`} style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }} src={image} alt={`${retailer.name} Prospektseite ${page}`} draggable={false} />}
-          {!external && !loading && !error && <div className="prospect-viewer-zoom-controls" onPointerDown={event=>event.stopPropagation()}><button onClick={()=>setZoomLevel(zoomRef.current-.25)} disabled={!zoomed} aria-label="Ansicht verkleinern"><ZoomOut size={18}/></button><span>{Math.round(zoom*100)}%</span><button onClick={()=>setZoomLevel(zoomRef.current+.25)} disabled={zoom>=2.99} aria-label="Ansicht vergrößern"><ZoomIn size={18}/></button></div>}
+          {!external && !loading && !error && <div className="prospect-viewer-zoom-controls" onPointerDown={event=>event.stopPropagation()}><button onClick={()=>setZoomLevel(zoomRef.current-.25)} disabled={zoom<=0.701} aria-label="Ansicht verkleinern"><ZoomOut size={18}/></button><span>{Math.round(zoom*100)}%</span><button onClick={()=>setZoomLevel(zoomRef.current+.25)} disabled={zoom>=2.99} aria-label="Ansicht vergrößern"><ZoomIn size={18}/></button></div>}
         </main>
         <nav className="prospect-viewer-pagination" aria-label="Prospektseiten">
           <button onClick={() => changePage(page - 1)} disabled={page <= 1 || loading} aria-label="Vorherige Seite"><ChevronLeft size={23}/></button>
