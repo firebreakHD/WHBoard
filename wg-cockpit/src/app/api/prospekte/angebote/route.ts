@@ -15,6 +15,8 @@ type Offer = {
   storeName: string;
   discount: number | null;
   condition: string | null;
+  validFrom:string|null;
+  validUntil:string|null;
 };
 
 let cached: { offers: Offer[]; updatedAt: string | null; expires: number } | null = null;
@@ -40,6 +42,8 @@ function numeric(value: string) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
+function dateValue(value:string){if(!value||value==="null"||value==="undefined")return null;const raw=value.startsWith('"')?decodeJsString(value):value.trim();const date=new Date(raw);return Number.isNaN(date.getTime())?null:date.toISOString()}
+
 function readOffers(html: string): Offer[] {
   // Sparkorb renders its current, public offer cards into the page response.
   // Read only the displayed product fields; never manufacture a previous price.
@@ -62,6 +66,8 @@ function readOffers(html: string): Offer[] {
       storeName: storeNames[store],
       discount: oldPrice && oldPrice > price ? Math.round((1 - price / oldPrice) * 100) : null,
       condition: match[12] !== "null" ? decodeJsString(match[12]) : match[11] !== "null" ? `Ab ${match[11]}` : null,
+      validFrom:dateValue(match[13]),
+      validUntil:dateValue(match[14]),
     });
   }
   return offers;

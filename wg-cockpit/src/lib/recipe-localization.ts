@@ -26,3 +26,25 @@ const measureWords: [RegExp,string][] = [
 ];
 
 export function localizeRecipeAmount(raw:string){let value=raw.trim().replace(/\s+/g," ");for(const [pattern,replacement] of measureWords)value=value.replace(pattern,replacement);return value;}
+
+export function normalizeRecipeShoppingQuantity(raw:string){
+  const value=raw.trim().replace(/½/g," 1/2").replace(/¼/g," 1/4").replace(/¾/g," 3/4").replace(/\s+/g," ");
+  const match=value.match(/^((?:\d+\s+)?\d+\/\d+|(?:\d+\s+)?\d+(?:[.,]\d+)?)\s*(.*)$/);
+  if(!match)return "1 Stück";
+  const numberParts=match[1].trim().split(/\s+/);const fraction=numberParts.pop()!;let amount:number;
+  if(fraction.includes("/")){const [numerator,denominator]=fraction.split("/").map(Number);amount=(Number(numberParts[0])||0)+(denominator?numerator/denominator:0)}else amount=(Number(numberParts[0])||0)+Number(fraction.replace(",","."));
+  const unit=match[2].trim().toLocaleLowerCase("de").replace(/[.]/g,"");
+  const format=(number:number)=>new Intl.NumberFormat("de-AT",{maximumFractionDigits:3}).format(number);
+  if(!unit||/^(?:x|stk|stück|stueck|piece|pieces|pc|pcs|item|items|clove|cloves|zehe|zehen|dose|dosen|can|cans|packet|packets|pck|päckchen|paeckchen)$/.test(unit))return `${format(amount)} Stück`;
+  if(/^(?:g|gram|grams|gramm)$/.test(unit))return `${format(amount)} Gramm`;
+  if(/^(?:kg|kilogram|kilograms|kilogramm)$/.test(unit))return `${format(amount)} Kilogramm`;
+  if(/^(?:mg|milligram|milligrams)$/.test(unit))return `${format(amount/1000)} Gramm`;
+  if(/^(?:l|liter|litre|litres|liters)$/.test(unit))return `${format(amount)} Liter`;
+  if(/^(?:ml|milliliter|milliliters|millilitre|millilitres)$/.test(unit))return `${format(amount/1000)} Liter`;
+  if(/^(?:tasse|tassen|cup|cups)$/.test(unit))return `${format(amount*.24)} Liter`;
+  if(/^(?:el|tablespoon|tablespoons|tbsp|tbs)$/.test(unit))return `${format(amount*.015)} Liter`;
+  if(/^(?:tl|teaspoon|teaspoons|tsp)$/.test(unit))return `${format(amount*.005)} Liter`;
+  if(/^(?:oz|ounce|ounces)$/.test(unit))return `${format(amount*28.3495)} Gramm`;
+  if(/^(?:lb|lbs|pound|pounds|pfund)$/.test(unit))return `${format(amount*.453592)} Kilogramm`;
+  return `${format(amount)} ${match[2].trim()}`;
+}

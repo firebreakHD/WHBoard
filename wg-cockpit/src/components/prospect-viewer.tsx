@@ -8,12 +8,13 @@ export type ProspectViewerRetailer = { id: string; name: string; url: string };
 const imageFlyerRetailers = new Set(["hofer", "spar", "eurospar", "interspar", "billa", "billa-plus", "lidl", "penny", "dm", "bipa"]);
 type PageData = { image: string; pageCount: number; title: string };
 
-export function ProspectViewer({ retailer, location, favorite, onFavorite, onClose }: {
+export function ProspectViewer({ retailer, location, favorite, onFavorite, onClose, showFavorite=true }: {
   retailer: ProspectViewerRetailer;
   location: string;
   favorite: boolean;
   onFavorite: () => void;
   onClose: () => void;
+  showFavorite?: boolean;
 }) {
   const [page, setPage] = useState(1);
   const [pageCount, setPageCount] = useState(1);
@@ -191,7 +192,7 @@ export function ProspectViewer({ retailer, location, favorite, onFavorite, onClo
         <div className="prospect-viewer-title"><b>{retailer.name}</b><small>{external ? "Offizielle Prospektseite" : "Aktuelles Flugblatt"}</small></div>
         <div className="prospect-viewer-actions">
           <button className="prospect-viewer-icon" onClick={() => void share()} aria-label="Prospekt teilen"><Share2 size={21}/></button>
-          <button className={`prospect-viewer-icon ${favorite ? "is-favorite" : ""}`} onClick={onFavorite} aria-label="Favorit umschalten" aria-pressed={favorite}><Heart size={22} fill={favorite ? "currentColor" : "none"}/></button>
+          {showFavorite&&<button className={`prospect-viewer-icon ${favorite ? "is-favorite" : ""}`} onClick={onFavorite} aria-label="Favorit umschalten" aria-pressed={favorite}><Heart size={22} fill={favorite ? "currentColor" : "none"}/></button>}
         </div>
       </header>
       {external ? <div className="prospect-viewer-fallback"><div className="prospect-viewer-fallback-copy"><b>Prospekt direkt beim Händler öffnen</b><span>Für diesen Händler ist kein frei zugänglicher Bildseiten-Feed verfügbar.</span><a className="button button-primary" href={retailer.url} target="_blank" rel="noreferrer">Offizielle Quelle öffnen <ExternalLink size={15}/></a></div></div> : <>

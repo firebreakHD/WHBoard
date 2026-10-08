@@ -1,3 +1,18 @@
+## 0.1.92
+
+- Übersetzt auch Mengen und Zubereitungsangaben direkt in der Rezeptansicht lesbar ins Deutsche.
+
+## 0.1.91
+
+- Verknüpft Produktfavoriten nach Marke und Produktart, damit markierte Markenangebote künftig passend hervorgehoben werden.
+
+## 0.1.90
+
+- Ergänzt eine ein- und ausklappbare Suche für aktuelle Angebote mit Händlerfilter, Produktfavoriten und günstigstem Suchtreffer.
+- Zeigt Angebotslaufzeiten nur an, wenn die Angebotsquelle konkrete Datumswerte liefert, und markiert Dringend-Produkte wieder rötlich.
+- Verbessert die Mengenübernahme aus Rezepten, Bild-Fehlerdarstellung und die lesbare Schritt-für-Schritt-Zubereitung.
+- Übernimmt dauerhafte Produktmengen als Wiederholmenge; einmalige Mengeneingaben bleiben einmalig.
+
 ## 0.1.89
 
 - Erweitert die Rezeptsuche über zusätzliche Seiten der Cooklang Federation und mehrere Suchvarianten; bis zu 180 passende Treffer werden zusammengeführt.
