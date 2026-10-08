@@ -1,3 +1,12 @@
+## 0.1.102
+
+- Verknüpft kurzes haptisches Feedback für Rezeptwechsel, Portionen, Zutaten, Favoriten und Angebotsaktionen mit der gemeinsamen Einstellung.
+- Aktiviert Pinch-Zoom am Handy und Scrollrad-Zoom am PC im Prospekt-Viewer; horizontale Seitenwechsel bleiben davon getrennt.
+- Wendet die Kachel-/Listen-Einstellung auch auf mobile Preis-Suchergebnisse und alle Kategorien im Einkaufsstart an.
+- Zeigt bei Rezepten und Suchtreffern bereits vorhandene Listeneinträge samt gespeicherter Menge.
+- Übersetzt längere Rezeptzubereitungen vollständig in handliche Schritte und entfernt das Rezeptbild aus der Schrittansicht.
+- Übernimmt Angebots- und Suchbilder sowie bekannte Preise in die Einkaufsliste und füllt passende Preise beim Abhaken vor.
+- Ergänzt die Einkaufs-Suche um Marktpreise unter den vorhandenen Produkten, mit Marktfilter, Preisvergleich, Mengenanzeige und Ein-Klick-Hinzufügen.
 ## 0.1.101
 
 - Verhindert Mengen von 0 bei manuellem Hinzufügen, Bearbeiten, Rezeptzutaten, Belegen und beim Anpassen im Einkaufsmodus.

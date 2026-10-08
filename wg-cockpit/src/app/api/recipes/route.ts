@@ -16,6 +16,14 @@ const germanQueryAliases:Record<string,string[]>={"nudeln":["pasta"],"nudelaufla
 
 function normalizeQuery(value:string){return value.toLocaleLowerCase("de").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/ß/g,"ss").replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim()}
 async function translateText(text:string, direction:"de|en"|"en|de"="en|de"){const value=text.trim();if(!value||value.length>480)return text;try{const url=new URL("https://api.mymemory.translated.net/get");url.searchParams.set("q",value);url.searchParams.set("langpair",direction);const response=await fetch(url,{next:{revalidate:86400},signal:AbortSignal.timeout(3500)});if(!response.ok)return text;const result=await response.json() as {responseData?:{translatedText?:string};responseStatus?:number};const translated=result.responseData?.translatedText?.trim();return result.responseStatus===200&&translated&&translated.length<Math.max(140,value.length*3)?translated:text}catch{return text}}
+async function translateLongText(text:string){
+  if(text.trim().length<=450)return translateText(text);
+  const sentences=text.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g)?.map(part=>part.trim()).filter(Boolean)??[text];
+  const chunks:string[]=[];let current="";
+  for(const sentence of sentences){if(current&&`${current} ${sentence}`.length>430){chunks.push(current);current=sentence}else current=current?`${current} ${sentence}`:sentence}
+  if(current)chunks.push(current);
+  return (await Promise.all(chunks.map(chunk=>translateText(chunk)))).join(" ");
+}
 async function searchTerms(query:string){const key=normalizeQuery(query);const aliases=germanQueryAliases[key]??germanQueryAliases[key.replace(/\s+/g,"")];const translated=aliases?.[0]??await translateText(query,"de|en");return [...new Set([translated,...(aliases??[]),query].map(value=>value.trim()).filter(Boolean))].slice(0,4)}
 
 async function cooklangSearch(term:string,page=1,locale?:string){const url=new URL("https://recipes.cooklang.org/api/search");url.searchParams.set("q",term);url.searchParams.set("limit","100");url.searchParams.set("page",`${page}`);if(locale)url.searchParams.set("locale",locale);const response=await fetch(url,{next:{revalidate:1800},signal:AbortSignal.timeout(9000),headers:{accept:"application/json"}});if(!response.ok)throw new Error(`Cooklang antwortet mit ${response.status}.`);return response.json() as Promise<{results?:CooklangSearchItem[]}>}
@@ -50,7 +58,7 @@ function mapMeal(meal: Meal | null | undefined): Recipe | null {
     image: meal.strMealThumb ?? "",
     category: meal.strCategory ?? "",
     area: meal.strArea ?? "",
-    instructions: (meal.strInstructions ?? "").split(/\r?\n+/).map((line) => line.trim()).filter((line) => Boolean(line) && !/^step\s*\d+\s*:?[.]?$/i.test(line)),
+    instructions: (meal.strInstructions ?? "").split(/\r?\n+/).flatMap(line=>line.trim().split(/(?<=[.!?])\s+(?=[A-ZÄÖÜ])/)).map(line=>line.trim()).filter((line) => Boolean(line) && !/^step\s*\d+\s*:?[.]?$/i.test(line)),
     source: meal.strSource || `https://www.themealdb.com/meal/${meal.idMeal}`,
     ingredients,
     provider: "mealdb",
@@ -59,7 +67,7 @@ function mapMeal(meal: Meal | null | undefined): Recipe | null {
 
 async function germanize(recipe:Recipe):Promise<Recipe>{
   if(recipe.locale?.toLowerCase().startsWith("de"))return recipe;
-  const [name,category,area,...instructions]=await Promise.all([recipe.name,recipe.category,recipe.area,...recipe.instructions].map(text=>translateText(text,"en|de")));
+  const [name,category,area,...instructions]=await Promise.all([recipe.name,recipe.category,recipe.area].map(text=>translateText(text,"en|de")).concat(recipe.instructions.map(text=>translateLongText(text))));
   return{...recipe,name,category,area,instructions};
 }
 

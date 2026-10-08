@@ -29,6 +29,7 @@ export function ProspectViewer({ retailer, location, favorite, onFavorite, onClo
   const zoomRef = useRef(0.9);
   const panRef = useRef({ x: 0, y: 0 });
   const pointers = useRef(new Map<number, { x: number; y: number }>());
+  const touchGesture = useRef<{ mode: "page" | "pan" | "pinch"; startX: number; startY: number; startDistance: number; startZoom: number; panX: number; panY: number } | null>(null);
   const gesture = useRef<
     | { mode: "page"; startX: number; startY: number }
     | { mode: "pan"; startX: number; startY: number; panX: number; panY: number }
@@ -60,6 +61,7 @@ export function ProspectViewer({ retailer, location, favorite, onFavorite, onClo
   }
 
   function pointerDown(event: ReactPointerEvent<HTMLElement>) {
+    if (event.pointerType === "touch") return;
     if (event.pointerType === "mouse" && event.button !== 0) return;
     const point = { x: event.clientX, y: event.clientY };
     if(event.pointerType==="mouse"){try{event.currentTarget.setPointerCapture(event.pointerId)}catch{}}
@@ -75,6 +77,7 @@ export function ProspectViewer({ retailer, location, favorite, onFavorite, onClo
   }
 
   function pointerMove(event: ReactPointerEvent<HTMLElement>) {
+    if (event.pointerType === "touch") return;
     if (!pointers.current.has(event.pointerId)) return;
     pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     const current = gesture.current;
@@ -87,6 +90,7 @@ export function ProspectViewer({ retailer, location, favorite, onFavorite, onClo
   }
 
   function pointerEnd(event: ReactPointerEvent<HTMLElement>) {
+    if (event.pointerType === "touch") return;
     const current = gesture.current;
     const origin = pointers.current.get(event.pointerId);
     if (current?.mode === "page" && origin) {
@@ -158,6 +162,69 @@ export function ProspectViewer({ retailer, location, favorite, onFavorite, onClo
     navigationLock.current = true;
     void loadPage(next).finally(() => { navigationLock.current = false; });
   }, [loadPage, loading, page, pageCount, zoomed]);
+
+  useEffect(() => {
+    const viewport = pageRef.current;
+    if (!viewport) return;
+    const distance = (touches: TouchList) => {
+      if (touches.length < 2) return 0;
+      return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+    };
+    const onStart = (event: TouchEvent) => {
+      if ((event.target as Element | null)?.closest("button")) return;
+      if (event.touches.length >= 2) {
+        touchGesture.current = { mode: "pinch", startX: 0, startY: 0, startDistance: distance(event.touches), startZoom: zoomRef.current, panX: panRef.current.x, panY: panRef.current.y };
+      } else if (event.touches.length === 1) {
+        const touch = event.touches[0];
+        touchGesture.current = { mode: zoomRef.current > 1.001 ? "pan" : "page", startX: touch.clientX, startY: touch.clientY, startDistance: 0, startZoom: zoomRef.current, panX: panRef.current.x, panY: panRef.current.y };
+      }
+    };
+    const onMove = (event: TouchEvent) => {
+      const current = touchGesture.current;
+      if (!current) return;
+      if (event.touches.length >= 2) {
+        event.preventDefault();
+        if (current.mode !== "pinch") {
+          current.mode = "pinch";
+          current.startDistance = distance(event.touches);
+          current.startZoom = zoomRef.current;
+        } else if (current.startDistance > 0) setZoomLevel(current.startZoom * distance(event.touches) / current.startDistance);
+        return;
+      }
+      if (event.touches.length === 1 && current.mode === "pan") {
+        event.preventDefault();
+        const touch = event.touches[0];
+        setPanPosition(current.panX + touch.clientX - current.startX, current.panY + touch.clientY - current.startY);
+      }
+    };
+    const onEnd = (event: TouchEvent) => {
+      const current = touchGesture.current;
+      if (!current) return;
+      if (event.touches.length >= 2) return;
+      if (event.touches.length === 1) {
+        const touch = event.touches[0];
+        touchGesture.current = { ...current, mode: zoomRef.current > 1.001 ? "pan" : "page", startX: touch.clientX, startY: touch.clientY, startDistance: 0, startZoom: zoomRef.current, panX: panRef.current.x, panY: panRef.current.y };
+        return;
+      }
+      if (current.mode === "page" && current.startZoom <= 1.001 && event.changedTouches.length) {
+        const touch = event.changedTouches[0];
+        const dx = touch.clientX - current.startX;
+        const dy = touch.clientY - current.startY;
+        if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.2) changePage(page + (dx < 0 ? 1 : -1));
+      }
+      touchGesture.current = null;
+    };
+    viewport.addEventListener("touchstart", onStart, { passive: true });
+    viewport.addEventListener("touchmove", onMove, { passive: false });
+    viewport.addEventListener("touchend", onEnd, { passive: true });
+    viewport.addEventListener("touchcancel", onEnd, { passive: true });
+    return () => {
+      viewport.removeEventListener("touchstart", onStart);
+      viewport.removeEventListener("touchmove", onMove);
+      viewport.removeEventListener("touchend", onEnd);
+      viewport.removeEventListener("touchcancel", onEnd);
+    };
+  }, [changePage, page]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
