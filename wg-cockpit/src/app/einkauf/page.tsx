@@ -69,9 +69,10 @@ export default function Einkauf(){
  const filterItems=(list:Item[])=>list.filter(i=>(filter==="Alle"||i.cat===filter)&&(!search||`${i.name} ${i.cat}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())));
  const open=items;
  const visibleOpen=filterItems(open);
+ const listedNames=useMemo(()=>new Set(items.map(item=>item.name.toLocaleLowerCase())),[items]);
  const favoriteProducts=useMemo(()=>favoriteNames.map(name=>catalogItems.find(p=>p.name.toLocaleLowerCase()===name.toLocaleLowerCase())||items.find(p=>p.name.toLocaleLowerCase()===name.toLocaleLowerCase())).filter((item):item is Item=>Boolean(item)),[favoriteNames,catalogItems,items]);
- const visibleFavorites=filterItems(favoriteProducts);
- const suggestions=catalogItems.filter(p=>!favoriteNames.some(name=>name.toLocaleLowerCase()===p.name.toLocaleLowerCase())&&(filter==="Alle"||filter===p.cat)&&(!search||p.name.toLocaleLowerCase().includes(search.toLocaleLowerCase())));
+ const visibleFavorites=filterItems(favoriteProducts).filter(item=>!listedNames.has(item.name.toLocaleLowerCase()));
+ const suggestions=catalogItems.filter(p=>!listedNames.has(p.name.toLocaleLowerCase())&&!favoriteNames.some(name=>name.toLocaleLowerCase()===p.name.toLocaleLowerCase())&&(filter==="Alle"||filter===p.cat)&&(!search||p.name.toLocaleLowerCase().includes(search.toLocaleLowerCase())));
  const showSearchCreate=Boolean(search.trim())&&!catalogItems.some(item=>item.name.toLocaleLowerCase()===search.trim().toLocaleLowerCase())&&!favoriteProducts.some(item=>item.name.toLocaleLowerCase()===search.trim().toLocaleLowerCase());
 
  function mobileEditPress(onEdit:()=>void){return{

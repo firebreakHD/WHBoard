@@ -1,3 +1,7 @@
+## 0.1.67
+
+- Gelistete Artikel verschwinden aus Favoriten und „Alle Artikel“ und erscheinen nach dem Entfernen oder Abschließen des Einkaufs wieder.
+
 ## 0.1.63
 
 - Repariert den Kartenbild-Upload am PC und ergänzt am Handy eine bedienbare Live-Kamera mit nativer Kamera-Auswahl als Fallback.
