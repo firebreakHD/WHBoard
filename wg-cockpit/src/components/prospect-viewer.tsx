@@ -61,7 +61,8 @@ export function ProspectViewer({ retailer, location, favorite, onFavorite, onClo
   function pointerDown(event: ReactPointerEvent<HTMLElement>) {
     if (event.pointerType === "mouse" && event.button !== 0) return;
     const point = { x: event.clientX, y: event.clientY };
-    event.currentTarget.setPointerCapture(event.pointerId);
+    if(event.pointerType==="mouse"){try{event.currentTarget.setPointerCapture(event.pointerId)}catch{}}
+    event.preventDefault();
     pointers.current.set(event.pointerId, point);
     if (pointers.current.size >= 2) {
       gesture.current = { mode: "pinch", startDistance: pointerDistance(), startZoom: zoomRef.current };

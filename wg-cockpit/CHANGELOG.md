@@ -1,3 +1,22 @@
+## 0.1.84
+
+- Vereinigt Rezepte und Prospekte unter dem Kompass-Button in einer Entdecken-Ansicht mit gespeicherten Tabs.
+- Versteckt die Hauptnavigation in Entdecken; Zurück und Browser-Zurück führen zurück zur Einkaufsliste.
+- Stellt Rezept-Angebotslinks auf den Prospekte-Tab um und verbessert die mobile Rezeptübersicht.
+
+## 0.1.83
+
+- Führt Rezepte und Prospekte unter dem Kompass-Button in einer gemeinsamen Entdecken-Ansicht mit dauerhaft gespeicherten Tabs zusammen.
+- Blendet die Hauptnavigation in Entdecken aus und unterstützt Zurück-Taste sowie Browser-Zurück.
+- Entfernt die zusätzliche Außenkarte im Entdecken-Bereich und verbessert die Rezeptkarten auf kleinen Displays.
+
+## 0.1.82
+
+- Fügt Wochenangebote mit Originalnamen direkt über ein Mengen- und Prioritätenfenster zur Einkaufsliste hinzu; „Angebot“ ist vorausgewählt, langes Drücken öffnet die Produktseite.
+- Lädt Prospekt- und Angebotsdaten nach einer Standort- oder Umkreisänderung erneut; Prospekt-Pinch-Zoom am Handy ist aktiv, die Zoom-Prozentleiste dort ausgeblendet.
+- Ergänzt eine Einkaufsanalyse mit Monatsverlauf, Geschäftssummen und aufgeschlüsselten Produktpreisen.
+- Macht die Rezeptansicht vollflächig, ergänzt Live-Suche auf der kostenlosen TheMealDB-API und normalisiert erkannte Produktnamen wie warmes Wasser zu Wasser.
+- Benennt den Ablaufknopf in „Einkauf buchen“ um und richtet ihn am Handy rechts aus.
 ## 0.1.81
 
 - Verhindert doppelte Zufallsvorschläge und rechnet auch einfache Bruchmengen bei der Portionsanpassung um.

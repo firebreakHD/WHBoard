@@ -1,7 +1,7 @@
 name: Admin Cockpit
 slug: admin_cockpit
 description: Separates Monitoring-Cockpit für Server, Docker, Home Assistant, NAS und Netzwerk.
-version: 0.1.79
+version: 0.1.82
 startup: application
 boot: auto
 init: false

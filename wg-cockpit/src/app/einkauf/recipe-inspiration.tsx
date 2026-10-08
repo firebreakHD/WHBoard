@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { createPortal } from "react-dom";
 import { ArrowLeft, BookOpen, Check, ChefHat, Heart, Minus, Plus, Search, ShoppingBasket, Users, X } from "lucide-react";
 import { useHouseholdState } from "@/lib/use-household-state";
@@ -10,19 +10,20 @@ type RecipeIngredient = { name: string; amount: string };
 type Recipe = { id: string; name: string; image: string; category: string; area: string; instructions: string[]; source: string; ingredients: RecipeIngredient[]; portions?: number; own?: boolean };
 type Offer = { id: string; title: string; unit: string; price: number; oldPrice: number | null; image: string | null; url: string | null; store: string; storeName: string; discount: number | null; condition: string | null };
 type OfferResponse = { offers?: Offer[] };
-type Props = { items: RecipeShoppingItem[]; setItems: Dispatch<SetStateAction<RecipeShoppingItem[]>>; layout: "tiles" | "list"; onBack: () => void };
+type Props = { items: RecipeShoppingItem[]; setItems: Dispatch<SetStateAction<RecipeShoppingItem[]>>; layout: "tiles" | "list"; onBack?: () => void; onShowProspects?: () => void; embedded?: boolean; active?: boolean };
 const tabs = ["Entdecken", "Beliebt", "Meine Rezepte", "Favoriten"] as const;
 type RecipeTab = typeof tabs[number];
 const pantryWords = ["butter", "kaffee", "wasser", "öl", "oel", "salz", "pfeffer", "zucker", "mehl", "gewürz", "gewuerz", "essig"];
 const icons: [string[], string][] = [[ ["tomat"], "🍅"], [["potato", "kartoffel"], "🥔"], [["zwiebel", "onion"], "🧅"], [["butter"], "🧈"], [["milk", "milch"], "🥛"], [["cheese", "käse"], "🧀"], [["cream", "sahne", "obers"], "🥛"], [["egg", "ei"], "🥚"], [["chicken", "huhn", "hähnchen"], "🍗"], [["fish", "fisch"], "🐟"], [["rice", "reis"], "🍚"], [["oil", "öl"], "🫒"], [["garlic", "knoblauch"], "🧄"], [["carrot", "karotte"], "🥕"], [["broccoli", "brokkoli"], "🥦"], [["cabbage", "kohl"], "🥬"], [["pasta", "nudel"], "🍝"], [["bread", "brot"], "🍞"]];
-function iconFor(name: string) { const needle = name.toLocaleLowerCase("de"); return icons.find(entry => entry[0].some(word => needle.includes(word)))?.[1] ?? "🥣"; }
+function normalizeIngredientName(raw:string){const original=raw.trim().replace(/\s*\([^)]*\)\s*/g," ").replace(/\s+/g," ");const value=original.toLocaleLowerCase("de").replace(/^(?:warm|warmes|warme|heiß|heisses|heiße|lauwarm|cold|hot)\s+/i,"");const aliases:[RegExp,string][]=[[ /^(?:warm|hot|cold|boiling)\s+water$|^wasser$|^water$/i,"Wasser"],[/^(?:tomato|tomatoes|paradeiser)$/i,"Tomaten"],[/^(?:potato|potatoes|erdäpfel|erdapfel)$/i,"Kartoffeln"],[/^(?:onion|onions)$/i,"Zwiebeln"],[/^(?:garlic)$/i,"Knoblauch"],[/^(?:egg|eggs)$/i,"Eier"],[/^(?:milk)$/i,"Milch"],[/^(?:butter)$/i,"Butter"],[/^(?:carrot|carrots)$/i,"Karotten"],[/^(?:cucumber|cucumbers)$/i,"Gurken"],[/^(?:chicken breast)$/i,"Hühnerbrust"],[/^(?:olive oil)$/i,"Olivenöl"],[/^(?:plain flour|all purpose flour)$/i,"Mehl"],[/^(?:heavy cream|double cream|whipping cream)$/i,"Schlagobers"]];return aliases.find(([pattern])=>pattern.test(value))?.[1]||original}
+function iconFor(name: string) { const needle = normalizeIngredientName(name).toLocaleLowerCase("de"); return icons.find(entry => entry[0].some(word => needle.includes(word)))?.[1] ?? "🥣"; }
 function categoryFor(name: string) { const n = name.toLocaleLowerCase("de"); if (/milch|butter|käse|cheese|cream|sahne|obers|yogurt|joghurt/.test(n)) return "Milchprodukte"; if (/tomat|potato|kartoffel|zwiebel|onion|karotte|carrot|gemüse|broccoli|kohl|salat/.test(n)) return "Obst & Gemüse"; if (/chicken|huhn|fleisch|beef|fish|fisch|lachs/.test(n)) return "Fleisch & Fisch"; if (/rice|reis|pasta|nudel/.test(n)) return "Nudeln & Reis"; if (/bread|brot|mehl/.test(n)) return "Backwaren"; return "Sonstiges"; }
 function scaledAmount(raw: string, factor: number) { const match = raw.trim().match(/^((?:\d+\s+)?\d+\/\d+|\d+(?:[.,]\d+)?)(\s*)(.*)$/); if (!match || factor === 1) return raw; const source = match[1].trim().split(/\s+/); const last = source.pop()!; let fraction: number; if (last.includes("/")) { const [numerator, denominator] = last.split("/"); fraction = Number(numerator) / Number(denominator); } else fraction = Number(last.replace(",", ".")); const value = ((Number(source[0]) || 0) + fraction) * factor; const amount = Number.isInteger(value) ? `${value}` : value.toLocaleString("de-AT", { maximumFractionDigits: 2 }); return `${amount}${match[2]}${match[3]}`; }
 function mergedQuantity(oldValue: string, nextValue: string) { const pattern = /^(\d+(?:[.,]\d+)?)\s*(.*)$/; const oldMatch = oldValue.match(pattern); const newMatch = nextValue.match(pattern); if (oldMatch && newMatch && oldMatch[2].trim().toLocaleLowerCase("de") === newMatch[2].trim().toLocaleLowerCase("de")) { const total = Number(oldMatch[1].replace(",", ".")) + Number(newMatch[1].replace(",", ".")); return `${Number.isInteger(total) ? total : total.toLocaleString("de-AT", { maximumFractionDigits: 2 })}${oldMatch[2] ? ` ${oldMatch[2].trim()}` : ""}`; } return oldValue && nextValue ? `${oldValue} + ${nextValue}` : oldValue || nextValue; }
 function pantryDefault(name: string) { const value = name.toLocaleLowerCase("de"); return !pantryWords.some(word => value.includes(word)); }
 function newId() { return `recipe-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`; }
 
-export function RecipeInspiration({ items, setItems, layout, onBack }: Props) {
+export function RecipeInspiration({ items, setItems, layout, onBack, onShowProspects, embedded=false, active=true }: Props) {
   const [tab, setTab] = useState<RecipeTab>("Entdecken");
   const [recipes, setRecipes, recipesReady] = useHouseholdState<Recipe[]>("recipeLibrary", []);
   const [ownRecipes, setOwnRecipes, ownReady] = useHouseholdState<Recipe[]>("myRecipes", []);
@@ -41,19 +42,22 @@ export function RecipeInspiration({ items, setItems, layout, onBack }: Props) {
   const [recipeIngredients, setRecipeIngredients] = useState("");
   const [instructions, setInstructions] = useState("");
   const [source, setSource] = useState("");
+  const searchTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
+  const searchRequest=useRef(0);
 
   async function loadRecipes(query = "") {
-    setBusy(true); setError("");
+    const request=++searchRequest.current;setBusy(true); setError("");
     try {
       const response = await fetch(`/api/recipes${query ? `?q=${encodeURIComponent(query)}` : ""}`, { cache: "no-store", signal: AbortSignal.timeout(12000) });
       const data = await response.json() as { recipes?: Recipe[]; error?: string };
+      if(request!==searchRequest.current)return;
       if (!response.ok) throw new Error(data.error || "Rezepte konnten nicht geladen werden.");
       const found = data.recipes ?? [];
       setVisibleRecipes(found);
       if (found.length) setRecipes(current => [...new Map([...found, ...current].map(recipe => [recipe.id, recipe])).values()]);
       if (!found.length) setError(query ? "Keine Rezepte gefunden. Suche mit einem deutschen oder englischen Gerichtsnamen." : "Gerade sind keine Rezepte erreichbar.");
-    } catch (cause) { setVisibleRecipes([]); setError(cause instanceof Error ? cause.message : "Rezeptquelle ist gerade nicht erreichbar."); }
-    finally { setBusy(false); }
+    } catch (cause) { if(request===searchRequest.current){setVisibleRecipes([]); setError(cause instanceof Error ? cause.message : "Rezeptquelle ist gerade nicht erreichbar.");} }
+    finally { if(request===searchRequest.current)setBusy(false); }
   }
   useEffect(() => { void loadRecipes(); fetch("/api/prospekte/angebote", { cache: "no-store" }).then(response => response.ok ? response.json() as Promise<OfferResponse> : null).then(data => setOffers(data?.offers ?? [])).catch(() => {}); }, []);
 
@@ -84,7 +88,7 @@ export function RecipeInspiration({ items, setItems, layout, onBack }: Props) {
     setItems(current => {
       const next = [...current];
       for (const { ingredient, index } of additions) {
-        const name = ingredient.name.trim(); if (!name) continue;
+        const name = normalizeIngredientName(ingredient.name); if (!name) continue;
         const quantity = scaledAmount(ingredient.amount || "1 Stück", factor);
         const match = next.find(item => item.name.toLocaleLowerCase("de") === name.toLocaleLowerCase("de"));
         if (match) {
@@ -110,14 +114,15 @@ export function RecipeInspiration({ items, setItems, layout, onBack }: Props) {
     setRecipeName(""); setRecipeIngredients(""); setInstructions(""); setSource(""); setCreateOpen(false); setTab("Meine Rezepte");
   }
 
-  if (!recipesReady || !ownReady || !favoritesReady || !countsReady) return <div className="recipe-module"><p className="quiet-note">Rezepte werden geladen …</p></div>;
-  return <section className="recipe-module" aria-label="Rezepte und Inspiration">
-    <div className="recipe-module-heading"><div><span><ChefHat size={15}/> Rezepte & Inspiration</span><h3>Was kochen wir heute?</h3></div><div><button className="recipe-back-button" onClick={onBack}><ArrowLeft size={15}/> Einkaufsliste</button><button className="recipe-create-button" onClick={() => setCreateOpen(true)}><Plus size={16}/> Eigenes Rezept</button></div></div>
+  useEffect(()=>{if(embedded||!active)return;const previous=document.body.style.overflow;document.body.style.overflow="hidden";return()=>{document.body.style.overflow=previous}},[active,embedded]);
+  if (!recipesReady || !ownReady || !favoritesReady || !countsReady) { const loading=<section className={`recipe-module ${embedded?"recipe-embedded":"recipe-fullscreen"}`}><p className="quiet-note">Rezepte werden geladen …</p></section>;return embedded?loading:typeof document==="undefined"?null:createPortal(loading,document.body); }
+  const content=<section className={`recipe-module ${embedded?"recipe-embedded":"recipe-fullscreen"}`} aria-label="Rezepte und Inspiration">
+    <div className="recipe-module-heading"><div><span><ChefHat size={15}/> Rezepte & Inspiration</span><h3>Was kochen wir heute?</h3></div><div>{!embedded&&<button className="recipe-back-button" onClick={onBack}><ArrowLeft size={15}/> Einkaufsliste</button>}<button className="recipe-create-button" onClick={() => setCreateOpen(true)}><Plus size={16}/> Eigenes Rezept</button></div></div>
     <div className="recipe-tabs" role="tablist">{tabs.map(value => <button key={value} role="tab" aria-selected={tab === value} className={tab === value ? "active" : ""} onClick={() => setTab(value)}>{value}{value === "Favoriten" && favoriteIds.length > 0 ? ` · ${favoriteIds.length}` : ""}</button>)}</div>
-    {tab === "Entdecken" && <form className="recipe-search" onSubmit={event => { event.preventDefault(); void loadRecipes(search.trim()); }}><Search size={16}/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Gericht suchen, z. B. Pasta oder Auflauf"/><button type="submit">Suchen</button></form>}
+    {tab === "Entdecken" && <form className="recipe-search" onSubmit={event => { event.preventDefault(); if(searchTimer.current)clearTimeout(searchTimer.current);void loadRecipes(search.trim()); }}><Search size={16}/><input value={search} onChange={event => {const value=event.target.value;setSearch(value);if(searchTimer.current)clearTimeout(searchTimer.current);if(value.trim().length>=2)searchTimer.current=setTimeout(()=>void loadRecipes(value.trim()),450);else if(!value.trim())void loadRecipes()}} placeholder="Gericht suchen, z. B. Pasta oder Auflauf"/><button type="submit">Suchen</button></form>}
     {tab === "Beliebt" && <p className="recipe-subtitle">Rezepte, die ihr bereits in eure Einkaufsliste übernommen habt.</p>}
     <div className={`recipe-card-grid ${layout === "list" ? "recipe-card-list" : ""}`}>
-      {shown.map(recipe => <article className="recipe-card" key={recipe.id}><button className="recipe-card-open" onClick={() => openRecipe(recipe)}>{recipe.image ? <img src={recipe.image} alt="" loading="lazy"/> : <span className="recipe-placeholder"><ChefHat size={30}/></span>}<span className="recipe-card-copy"><small>{recipe.own ? "Euer Rezept" : [recipe.area, recipe.category].filter(Boolean).join(" · ") || "Rezept"}</small><b>{recipe.name}</b><span>{recipe.ingredients.length} Zutaten{usedCounts[recipe.id] ? ` · ${usedCounts[recipe.id]}× übernommen` : ""}</span></span></button><div className="recipe-card-actions">{isOffer(recipe.name) && <a className="recipe-offer-badge" href="/prospekte">Passendes Angebot</a>}<button className={`recipe-heart ${favoriteIds.includes(recipe.id) ? "active" : ""}`} onClick={() => toggleFavorite(recipe)} aria-label="Favorit umschalten"><Heart size={17} fill={favoriteIds.includes(recipe.id) ? "currentColor" : "none"}/></button></div></article>)}
+      {shown.map(recipe => <article className="recipe-card" key={recipe.id}><button className="recipe-card-open" onClick={() => openRecipe(recipe)}>{recipe.image ? <img src={recipe.image} alt="" loading="lazy"/> : <span className="recipe-placeholder"><ChefHat size={30}/></span>}<span className="recipe-card-copy"><small>{recipe.own ? "Euer Rezept" : [recipe.area, recipe.category].filter(Boolean).join(" · ") || "Rezept"}</small><b>{recipe.name}</b><span>{recipe.ingredients.length} Zutaten{usedCounts[recipe.id] ? ` · ${usedCounts[recipe.id]}× übernommen` : ""}</span></span></button><div className="recipe-card-actions">{isOffer(recipe.name) && (onShowProspects?<button type="button" className="recipe-offer-badge" onClick={onShowProspects}>Passendes Angebot</button>:<a className="recipe-offer-badge" href="/prospekte">Passendes Angebot</a>)}<button className={`recipe-heart ${favoriteIds.includes(recipe.id) ? "active" : ""}`} onClick={() => toggleFavorite(recipe)} aria-label="Favorit umschalten"><Heart size={17} fill={favoriteIds.includes(recipe.id) ? "currentColor" : "none"}/></button></div></article>)}
       {!shown.length && <div className="recipe-empty">{busy ? "Rezepte werden geladen …" : error || (tab === "Meine Rezepte" ? "Hier könnt ihr eure eigenen Rezepte speichern." : tab === "Beliebt" ? "Noch kein Rezept übernommen. Entdeckt ein Rezept und fügt Zutaten zur Liste hinzu." : "Hier sind noch keine Rezepte." )}</div>}
     </div>
     {busy && shown.length > 0 && <small className="recipe-loading-note">Weitere Rezepte werden geladen …</small>}
@@ -127,4 +132,5 @@ export function RecipeInspiration({ items, setItems, layout, onBack }: Props) {
 
     {createOpen && createPortal(<div className="recipe-detail-scrim" onMouseDown={event => { if (event.target === event.currentTarget) setCreateOpen(false); }}><section className="recipe-create-dialog" role="dialog" aria-modal="true" aria-labelledby="recipe-create-title"><header className="recipe-detail-header"><div><small>Für eure WG</small><h3 id="recipe-create-title">Rezept speichern</h3></div><button className="sheet-close" onClick={() => setCreateOpen(false)} aria-label="Schließen"><X size={18}/></button></header><div className="recipe-create-fields"><label>Name<input value={recipeName} onChange={event => setRecipeName(event.target.value)} placeholder="z. B. Gemüselasagne"/></label><label>Zutaten, eine pro Zeile<textarea value={recipeIngredients} onChange={event => setRecipeIngredients(event.target.value)} placeholder={'2 Tomaten\n250 g Nudeln\n1 EL Olivenöl'} rows={6}/></label><label>Zubereitung (optional)<textarea value={instructions} onChange={event => setInstructions(event.target.value)} rows={4} placeholder="Ein Schritt pro Zeile"/></label><label>Rezeptlink (optional)<input value={source} onChange={event => setSource(event.target.value)} placeholder="https://…"/></label></div><footer className="recipe-detail-footer"><button className="recipe-back-button" onClick={() => setCreateOpen(false)}>Abbrechen</button><button className="recipe-add-button" disabled={!recipeName.trim() || !recipeIngredients.trim()} onClick={saveOwnRecipe}><Check size={16}/> Rezept speichern</button></footer></section></div>, document.body)}
   </section>;
+  return embedded?content:typeof document==="undefined"?null:createPortal(content,document.body);
 }

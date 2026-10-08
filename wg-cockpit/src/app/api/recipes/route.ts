@@ -9,6 +9,9 @@ type Recipe = { id: string; name: string; image: string; category: string; area:
 type CacheEntry = { expires: number; recipes: Recipe[] };
 const cache = new Map<string, CacheEntry>();
 const ttl = 60 * 60_000;
+const germanQueryAliases:Record<string,string>={"nudeln":"pasta","nudelauflauf":"pasta","kartoffeln":"potato","kartoffelauflauf":"potato","huhn":"chicken","hähnchen":"chicken","hühnchen":"chicken","rindfleisch":"beef","schweinefleisch":"pork","fisch":"fish","kuchen":"cake","pfannkuchen":"pancake","palatschinken":"pancake","suppe":"soup","salat":"salad","gemüse":"vegetable","gemuese":"vegetable","reis":"rice","tomaten":"tomato","tomatensuppe":"tomato soup","pizza":"pizza","brot":"bread","frühstück":"breakfast","fruehstueck":"breakfast","dessert":"dessert"};
+
+async function searchTermInEnglish(query:string){const alias=germanQueryAliases[query.toLocaleLowerCase("de")];if(alias)return alias;if(!/[äöüß]/i.test(query)&&!/nudel|kartoffel|huhn|hähn|gemüse|gemuese|fleisch|kuchen|suppe|pfann|palatsch|frühstück|fruehstueck/i.test(query))return query;try{const url=new URL("https://api.mymemory.translated.net/get");url.searchParams.set("q",query);url.searchParams.set("langpair","de|en");const response=await fetch(url,{next:{revalidate:86400},signal:AbortSignal.timeout(2500)});if(!response.ok)return query;const result=await response.json() as {responseData?:{translatedText?:string}};const translated=result.responseData?.translatedText?.trim();return translated&&translated.length<120?translated:query}catch{return query}}
 
 function mapMeal(meal: Meal | null | undefined): Recipe | null {
   if (!meal?.idMeal || !meal.strMeal) return null;
@@ -47,7 +50,7 @@ export async function GET(request: NextRequest) {
     let meals: Meal[] = [];
     if (query) {
       const url = new URL("https://www.themealdb.com/api/json/v1/1/search.php");
-      url.searchParams.set("s", query);
+      url.searchParams.set("s", await searchTermInEnglish(query));
       meals = (await mealDb(url)).meals ?? [];
     } else {
       const picks = await Promise.allSettled(Array.from({ length: 6 }, () => mealDb(new URL("https://www.themealdb.com/api/json/v1/1/random.php"), true)));
