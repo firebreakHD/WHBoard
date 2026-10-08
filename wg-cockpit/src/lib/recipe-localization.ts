@@ -36,7 +36,25 @@ const measureWords: [RegExp,string][] = [
   [/\btablespoons?\b|\btbs\b|\btbsp\b/gi,"EL"],[/\bteaspoons?\b|\btsp\b/gi,"TL"],[/\bcups?\b/gi,"Tasse"],[/\bounces?\b/gi,"oz"],[/\bpounds?\b/gi,"Pfund"],[/\bcloves?\b/gi,"Zehen"],[/\bpinch(?:es)?\b/gi,"Prise"],[/\bhandfuls?\b/gi,"Handvoll"],[/\bbunch(?:es)?\b/gi,"Bund"],[/\bslices?\b/gi,"Scheiben"],[/\bpackets?\b|\bpkg\b/gi,"Päckchen"],[/\bcans?\b/gi,"Dosen"],[/\bsmall\b/gi,"klein"],[/\blarge\b/gi,"groß"],[/\bmedium\b/gi,"mittelgroß"],[/\bto taste\b/gi,"nach Geschmack"],[/\bsplash(?:es)?\b/gi,"Schuss"],[/\bsprigs?\b/gi,"Zweige"],[/\bchopped\b/gi,"gehackt"],[/\bcrushed\b/gi,"zerdrückt"],[/\bgrated\b/gi,"gerieben"],[/\bdiced\b/gi,"gewürfelt"],[/\bsliced\b/gi,"in Scheiben"]
 ];
 
-export function localizeRecipeAmount(raw:string){let value=raw.trim().replace(/\s+/g," ");for(const [pattern,replacement] of measureWords)value=value.replace(pattern,replacement);return value;}
+export function localizeRecipeAmount(raw:string){
+  let value=raw.trim().replace(/\s+/g," ");
+  const measurement=value.match(/^((?:\d+\s+)?\d+(?:[.,]\d+)?(?:\/\d+)?)\s*(fluid\s+ounces?|fl\s*oz|ounces?|oz|pounds?|lbs?|lb|stones?|st)\b(.*)$/i);
+  if(measurement){
+    const [whole,...fractional]=measurement[1].trim().split(/\s+/);let quantity=0;
+    if(fractional.length){const [numerator,denominator]=fractional[0].split("/").map(Number);quantity=Number(whole)+(denominator?numerator/denominator:0)}
+    else if(whole.includes("/")){const [numerator,denominator]=whole.split("/").map(Number);quantity=denominator?numerator/denominator:0}
+    else quantity=Number(whole.replace(",","."));
+    const unit=measurement[2].toLocaleLowerCase("en");const isFluid=/fluid|fl\s*oz/.test(unit);
+    const grams=quantity*(/^(?:pounds?|lbs?|lb)$/.test(unit)?453.59237:/^(?:stones?|st)$/.test(unit)?6350:28.349523125);
+    const rest=measurement[3];
+    if(isFluid){const milliliters=quantity*29.5735;value=`${Number.isInteger(milliliters)?milliliters:Math.round(milliliters)} ml${rest}`}
+    else if(grams>=1000)value=`${(grams/1000).toLocaleString("de-AT",{maximumFractionDigits:2})} kg${rest}`;
+    else value=`${Math.max(1,Math.round(grams))} g${rest}`;
+  }
+  for(const [pattern,replacement] of measureWords)value=value.replace(pattern,replacement);
+  value=value.replace(/\bpieces?\b/gi,"Stück").replace(/\bitems?\b/gi,"Stück").replace(/\bpcs?\b/gi,"Stück");
+  return value;
+}
 
 export function normalizeRecipeShoppingQuantity(raw:string){
   const value=raw.trim().replace(/½/g," 1/2").replace(/¼/g," 1/4").replace(/¾/g," 3/4").replace(/\s+/g," ");

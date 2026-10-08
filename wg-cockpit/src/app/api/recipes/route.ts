@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 type Meal = Record<string, string | null> & { idMeal?: string; strMeal?: string; strMealThumb?: string; strCategory?: string; strArea?: string; strInstructions?: string; strSource?: string; strYoutube?: string };
 type RecipeIngredient = { name: string; amount: string; hint?: string };
-type Recipe = { id: string; name: string; image: string; category: string; area: string; instructions: string[]; source: string; ingredients: RecipeIngredient[]; portions?: number; ingredientCount?:number; detailsLoaded?:boolean; provider?:"cooklang"|"mealdb"; locale?:string };
+type Recipe = { id: string; name: string; image: string; category: string; area: string; description?:string; instructions: string[]; source: string; ingredients: RecipeIngredient[]; portions?: number; ingredientCount?:number; detailsLoaded?:boolean; provider?:"cooklang"|"mealdb"; locale?:string };
 type CacheEntry = { expires: number; recipes: Recipe[] };
 type CooklangSearchItem = { id:number;title:string;summary?:string|null;tags?:string[];locale?:string;image_url?:string|null;source_url?:string|null;feed?:{title?:string} };
 type CooklangDetail = CooklangSearchItem & { content?:string; ingredients?:{name:string;quantity?:number|null;unit?:string|null}[]; servings?:number|null; total_time_minutes?:number|null };
@@ -24,21 +24,18 @@ async function translateLongText(text:string){
   if(current)chunks.push(current);
   return (await Promise.all(chunks.map(chunk=>translateText(chunk)))).join(" ");
 }
-const englishInstructionTerms=/\b(add|mix|stir|cook|heat|preheat|bake|boil|simmer|chop|cut|slice|drain|pour|serve|until|then|with|into|over|season|remove|place|combine|whisk|fry|roast|minutes?|tablespoons?|teaspoons?|the|and)\b/i;
 async function searchTerms(query:string){const key=normalizeQuery(query);const aliases=germanQueryAliases[key]??germanQueryAliases[key.replace(/\s+/g,"")];const translated=aliases?.[0]??await translateText(query,"de|en");return [...new Set([translated,...(aliases??[]),query].map(value=>value.trim()).filter(Boolean))].slice(0,4)}
 
 async function cooklangSearch(term:string,page=1,locale?:string){const url=new URL("https://recipes.cooklang.org/api/search");url.searchParams.set("q",term);url.searchParams.set("limit","100");url.searchParams.set("page",`${page}`);if(locale)url.searchParams.set("locale",locale);const response=await fetch(url,{next:{revalidate:1800},signal:AbortSignal.timeout(9000),headers:{accept:"application/json"}});if(!response.ok)throw new Error(`Cooklang antwortet mit ${response.status}.`);return response.json() as Promise<{results?:CooklangSearchItem[]}>}
 
-function mapCooklangCard(item:CooklangSearchItem):Recipe{return{id:`cooklang-${item.id}`,name:item.title,image:item.image_url??"",category:(item.tags??[]).slice(0,2).join(" · "),area:item.feed?.title??"",instructions:[],source:item.source_url??`https://recipes.cooklang.org/api/recipes/${item.id}`,ingredients:[],detailsLoaded:false,provider:"cooklang",locale:item.locale}}
+function mapCooklangCard(item:CooklangSearchItem):Recipe{return{id:`cooklang-${item.id}`,name:item.title,image:item.image_url??"",category:(item.tags??[]).slice(0,2).join(" · "),area:item.feed?.title??"",description:item.summary?.trim()||undefined,instructions:[],source:item.source_url??`https://recipes.cooklang.org/api/recipes/${item.id}`,ingredients:[],detailsLoaded:false,provider:"cooklang",locale:item.locale}}
 
 function cooklangSteps(content:string){return content.split(/\r?\n\s*\r?\n/).map(step=>step.trim()).filter(step=>step&&!/^>>/m.test(step)).map(step=>step.replace(/^#+\s*/,"").replace(/@([^{}]+)\{[^}]*\}/g,"$1").replace(/#([^{}]+)\{[^}]*\}/g,"$1").replace(/~\{([^%}]+)%([^}]+)\}/g,(_,amount:string,unit:string)=>`${amount} ${localizeRecipeAmount(unit)}`).replace(/\s+/g," ").trim()).filter(Boolean)}
 
 function mapCooklangDetail(detail:CooklangDetail):Recipe{
   const ingredients=(detail.ingredients??[]).map(item=>{const localized=localizeRecipeIngredient(item.name);const quantity=item.quantity==null?"":Number.isInteger(item.quantity)?`${item.quantity}`:item.quantity.toLocaleString("de-AT",{maximumFractionDigits:2});return{name:localized.name,amount:[quantity,localizeRecipeAmount(item.unit??"")].filter(Boolean).join(" "),hint:localized.hint}});
-  return{id:`cooklang-${detail.id}`,name:detail.title,image:detail.image_url??"",category:(detail.tags??[]).slice(0,2).join(" · "),area:detail.feed?.title??"",instructions:cooklangSteps(detail.content??""),source:detail.source_url??`https://recipes.cooklang.org/api/recipes/${detail.id}`,ingredients,portions:detail.servings??4,ingredientCount:ingredients.length,detailsLoaded:true,provider:"cooklang",locale:detail.locale};
+  return{id:`cooklang-${detail.id}`,name:detail.title,image:detail.image_url??"",category:(detail.tags??[]).slice(0,2).join(" · "),area:detail.feed?.title??"",description:detail.summary?.trim()||undefined,instructions:cooklangSteps(detail.content??""),source:detail.source_url??`https://recipes.cooklang.org/api/recipes/${detail.id}`,ingredients,portions:detail.servings??4,ingredientCount:ingredients.length,detailsLoaded:true,provider:"cooklang",locale:detail.locale};
 }
-
-async function translateNames(recipes:Recipe[]){const translated=[...recipes];const batches:Array<{start:number;pending:Recipe[]}>=[];for(let start=0;start<recipes.length;start+=8){const pending=recipes.slice(start,start+8).filter(recipe=>!recipe.locale?.toLowerCase().startsWith("de"));if(pending.length)batches.push({start,pending})}const results=await Promise.all(batches.map(batch=>translateText(batch.pending.map(recipe=>recipe.name).join(" ||| "),"en|de")));for(let batchIndex=0;batchIndex<batches.length;batchIndex++){const {start,pending}=batches[batchIndex];const names=results[batchIndex].split(/\s*\|\|\|\s*/);if(names.length===pending.length)for(let index=0;index<pending.length;index++){const at=start+recipes.slice(start,start+8).findIndex(recipe=>recipe.id===pending[index].id);translated[at]={...translated[at],name:names[index]||pending[index].name}}}return translated}
 
 function mapMeal(meal: Meal | null | undefined): Recipe | null {
   if (!meal?.idMeal || !meal.strMeal) return null;
@@ -66,12 +63,19 @@ function mapMeal(meal: Meal | null | undefined): Recipe | null {
   };
 }
 
-async function germanize(recipe:Recipe):Promise<Recipe>{
+async function germanize(recipe:Recipe,complete=true):Promise<Recipe>{
   const germanSource=recipe.locale?.toLowerCase().startsWith("de")??false;
-  const metadata:[string,string,string]=germanSource?[recipe.name,recipe.category,recipe.area]:await Promise.all([recipe.name,recipe.category,recipe.area].map(text=>translateText(text,"en|de"))) as [string,string,string];
-  const [name,category,area]=metadata;
-  const instructions=await Promise.all(recipe.instructions.map(async text=>localizeRecipeIngredientMentions(englishInstructionTerms.test(text)?await translateLongText(text):text)));
-  return{...recipe,name,category,area,instructions};
+  const metadata:[string,string,string,string]=germanSource?[recipe.name,recipe.category,recipe.area,recipe.description??""]:await Promise.all([recipe.name,recipe.category,recipe.area,recipe.description??""].map(text=>text?translateText(text,"en|de"):Promise.resolve(""))) as [string,string,string,string];
+  const [name,category,area,description]=metadata;
+  const instructions=complete?await Promise.all(recipe.instructions.map(async text=>localizeRecipeIngredientMentions(germanSource?text:await translateLongText(text)))):[];
+  const ingredients=await Promise.all(recipe.ingredients.map(async ingredient=>{
+    const localized=localizeRecipeIngredient(ingredient.name);
+    const translatedName=complete&&!germanSource&&localized.name===ingredient.name?await translateText(ingredient.name,"en|de"):localized.name;
+    const finalName=localizeRecipeIngredient(translatedName).name;
+    const hint=ingredient.hint?localizeRecipeIngredientMentions(complete&&!germanSource?await translateText(ingredient.hint,"en|de"):ingredient.hint):localized.hint;
+    return{...ingredient,name:finalName,amount:localizeRecipeAmount(ingredient.amount),hint};
+  }));
+  return{...recipe,name,category,area,description:description||undefined,ingredients,instructions,detailsLoaded:complete};
 }
 
 async function mealDb(url: URL, fresh = false) {
@@ -84,6 +88,7 @@ export async function GET(request: NextRequest) {
   const query = (request.nextUrl.searchParams.get("q") ?? "").trim().replace(/\s+/g, " ");
   const fresh=request.nextUrl.searchParams.get("fresh")==="1";
   const detailId=request.nextUrl.searchParams.get("id")??"";
+  if(detailId.startsWith("mealdb-")){const id=detailId.slice("mealdb-".length);if(!/^\d+$/.test(id))return NextResponse.json({error:"Rezept nicht gefunden."},{status:400});try{const url=new URL("https://www.themealdb.com/api/json/v1/1/lookup.php");url.searchParams.set("i",id);const data=await mealDb(url);const recipe=mapMeal(data.meals?.[0]);if(!recipe)throw new Error("Rezeptdetails konnten nicht geladen werden.");return NextResponse.json({recipe:await germanize(recipe)},{headers:{"Cache-Control":"public, max-age=3600, stale-while-revalidate=7200"}})}catch(error){const message=error instanceof Error?error.message:"Rezept konnte nicht geladen werden.";return NextResponse.json({error:message},{status:502,headers:{"Cache-Control":"no-store"}})}}
   if(detailId.startsWith("cooklang-")){const id=Number(detailId.slice("cooklang-".length));if(!Number.isSafeInteger(id)||id<1)return NextResponse.json({error:"Rezept nicht gefunden."},{status:400});try{const response=await fetch(`https://recipes.cooklang.org/api/recipes/${id}`,{next:{revalidate:86400},signal:AbortSignal.timeout(9000),headers:{accept:"application/json"}});if(!response.ok)throw new Error(`Cooklang antwortet mit ${response.status}.`);const detail=await response.json() as CooklangDetail;return NextResponse.json({recipe:await germanize(mapCooklangDetail(detail))},{headers:{"Cache-Control":"public, max-age=3600, stale-while-revalidate=7200"}})}catch(error){const message=error instanceof Error?error.message:"Rezept konnte nicht geladen werden.";return NextResponse.json({error:message},{status:502,headers:{"Cache-Control":"no-store"}})}}
   if (query.length > 80) return NextResponse.json({ error: "Bitte kürzer suchen." }, { status: 400 });
   const key = query ? `search:${query.toLocaleLowerCase("de")}` : "discover";
@@ -116,14 +121,14 @@ export async function GET(request: NextRequest) {
         return score(a)-score(b)||a.name.localeCompare(b.name,"de");
       }).slice(0,180);
       const [complete,cookCardsToTranslate]=[relevant.filter(recipe=>recipe.provider!=="cooklang"),relevant.filter(recipe=>recipe.provider==="cooklang")];
-      const recipes=[...await Promise.all(complete.map(germanize)),...await translateNames(cookCardsToTranslate)];
+      const recipes=[...await Promise.all(complete.map(recipe=>germanize(recipe,false))),...await Promise.all(cookCardsToTranslate.map(recipe=>germanize(recipe,false)))];
       if(!fresh)cache.set(key,{recipes,expires:Date.now()+ttl});
       return NextResponse.json({recipes,source:"TheMealDB + Cooklang Federation"},{headers:{"Cache-Control":fresh?"no-store":"public, max-age=900, stale-while-revalidate=1800"}});
     } else {
       const picks = await Promise.allSettled(Array.from({ length: 15 }, () => mealDb(new URL("https://www.themealdb.com/api/json/v1/1/random.php"), true)));
       meals = picks.flatMap((pick) => pick.status === "fulfilled" ? pick.value.meals ?? [] : []);
     }
-    const recipes = await Promise.all([...new Map(meals.map(mapMeal).filter((recipe): recipe is Recipe => Boolean(recipe)).map((recipe) => [recipe.id, recipe])).values()].slice(0, query?180:9).map(germanize));
+    const recipes = await Promise.all([...new Map(meals.map(mapMeal).filter((recipe): recipe is Recipe => Boolean(recipe)).map((recipe) => [recipe.id, recipe])).values()].slice(0, query?180:9).map(recipe=>germanize(recipe,false)));
     if(!fresh)cache.set(key, { recipes, expires: Date.now() + ttl });
     return NextResponse.json({ recipes, source: "TheMealDB + Cooklang Federation" }, { headers: { "Cache-Control": fresh?"no-store":"public, max-age=900, stale-while-revalidate=1800" } });
   } catch (error) {

@@ -1,3 +1,26 @@
+## 0.1.110
+
+- Lädt die ausführlichen Rezeptdetails erst beim Öffnen. Dadurch werden Zutaten und sämtliche Schritte dann vollständig ins Deutsche übertragen, ohne die gesamte Suche auszubremsen.
+- Übersetzt auch verfügbare Rezeptbeschreibungen und vereinheitlicht die angezeigten Mengen für Österreich.
+
+## 0.1.109
+
+- Aktiviert den Zieh-zum-Aktualisieren-Refresh über die gesamte Rezeptansicht, einschließlich „Uhrzeit“.
+- Übersetzt Rezeptbeschreibungen, Zutaten und Zubereitungsschritte konsequent ins Deutsche, sofern die Quelle nicht deutsch ist.
+- Rechnet englische Gewichtsmaße wie Pfund und Unzen in gebräuchliche Gramm- und Kilogrammangaben um und vereinheitlicht Stückangaben.
+- Entfernt den zusätzlichen Trenner und Leerraum vor der ersten Angebotsüberschrift in „Entdecken“.
+
+## 0.1.108
+
+- Setzt das kompakte Standort- und Umkreisfeld direkt unter die Angebote, ohne zusätzliche Beschreibungstexte.
+- Zeigt darunter die Produktsuche und anschließend die Prospekte.
+- Macht die Produktsuch-Kacheln vollständig antippbar und erweitert den unteren Scrollabstand leicht, damit die letzte Kachel nicht unter der Handy-Menüleiste endet.
+
+## 0.1.107
+
+- Öffnet „Entdecken“ immer zuerst mit „Angebote und Prospekte“.
+- Ordnet die Ansicht neu: Angebotsraster, Produktsuche und darunter die verfügbaren Prospekte.
+
 ## 0.1.106
 
 - Entfernt den Favoritenstern aus den Marktprodukten in der Einkaufssuche und ergänzt ein integriertes X zum Abbrechen in der Einkaufs- und Produktsuche bei Angebote und Prospekte.
