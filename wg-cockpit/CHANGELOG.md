@@ -1,3 +1,19 @@
+## 0.1.71
+
+- Richtet das Einstellungs-Zahnrad am mobilen Dashboard rechts neben der Überschrift aus.
+
+## 0.1.70
+
+- Lädt für jeden Händler im Prospektbereich die echten, einzelnen Bildseiten aus den aktuellen Publikationen; ergänzt auch das dm Journal als blätterbares Prospekt.
+- Hält die Prospektseiten am Handy und PC einzeln, horizontal navigierbar und mit stabiler Seitenanzeige.
+- Zeigt das Zahnrad auf dem mobilen WG-Dashboard oben rechts an und öffnet damit die App-Einstellungen.
+
+## 0.1.68
+
+- Zeigt das Einstellungs-Zahnrad am Handy zuverlässig nur auf dem Dashboard-Start an, auch über Home-Assistant-Ingress.
+- Sendet Einkaufs-Vibrationen an die Home-Assistant-Companion-App und nutzt die Browser-Vibration als Fallback.
+- Vereinfacht die Karten- und Bon-Kamera auf einen nativen Kamera-Aufruf plus Upload und gestaltet den Bon-Dialog mobil mit festem Aktionsbereich.
+
 ## 0.1.67
 
 - Gelistete Artikel verschwinden aus Favoriten und „Alle Artikel“ und erscheinen nach dem Entfernen oder Abschließen des Einkaufs wieder.

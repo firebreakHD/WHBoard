@@ -4,6 +4,7 @@ import {useMemo,useState} from "react";
 import {createPortal} from "react-dom";
 import {ArrowLeft,Check,ChevronRight,Receipt,ShoppingCart,X} from "lucide-react";
 import {useHouseholdState} from "@/lib/use-household-state";
+import {triggerHaptic} from "@/lib/haptics";
 import {parseMoneyAmount} from "@/lib/money";
 import {ShoppingReceiptImport} from "./shopping-receipt-import";
 
@@ -24,7 +25,7 @@ export function ShoppingStartModule({items,setItems,layout}:Props){
  const [buyer,setBuyer]=useState("Marcel");const [store,setStore]=useState("Billa");const [otherStore,setOtherStore]=useState("");const [sortByAisle,setSortByAisle]=useState(true);
  const [outcomeItem,setOutcomeItem]=useState<ShoppingRunItem|null>(null);const [quantityItem,setQuantityItem]=useState<ShoppingRunItem|null>(null);const [quantityDraft,setQuantityDraft]=useState("");const [prices,setPrices]=useState<Record<string,string>>({});const [missingPriceId,setMissingPriceId]=useState<string|null>(null);const [total,setTotal]=useState("");const [receiptOpen,setReceiptOpen]=useState(false);const [busy,setBusy]=useState(false);const [error,setError]=useState("");
  const categories=useMemo(()=>{const source=items.filter(item=>!run?.checked.includes(item.id));return run&&!run.sortByAisle&&source.length?["Alle Artikel"]:[...new Set(source.map(item=>item.cat))]},[items,run]);
- function haptic(){if(preferences.shoppingHaptics!==false&&typeof navigator!=="undefined")navigator.vibrate?.(10)}
+ function haptic(){triggerHaptic(preferences.shoppingHaptics!==false)}
  const grouped=useMemo(()=>{const map=new Map<string,ShoppingRunItem[]>();for(const item of items){if(run?.checked.includes(item.id))continue;const key=run&&!run.sortByAisle?"Alle Artikel":item.cat;map.set(key,[...(map.get(key)||[]),item])}return [...map.entries()]},[items,run]);
  const category=run?.category||categories[0]||"";const inCategory=items.filter(item=>(run&&!run.sortByAisle||item.cat===category)&&!run?.checked.includes(item.id));const completed=run?.checked.length||0;const trackedPriceTotal=run?.checked.reduce((sum,id)=>{const price=parseMoneyAmount(prices[id]||"");return sum+(Number.isFinite(price)&&price>0?price:0)},0)||0;const checkedItems=items.filter(item=>run?.checked.includes(item.id));const hasSomePrices=checkedItems.some(item=>{const value=parseMoneyAmount(prices[item.id]||"");return Number.isFinite(value)&&value>0});const hasMissingPrices=hasSomePrices&&checkedItems.some(item=>{const value=parseMoneyAmount(prices[item.id]||"");return !Number.isFinite(value)||value<=0});const finalAmount=total.trim()?parseMoneyAmount(total):trackedPriceTotal;const finishDisabled=busy||hasMissingPrices||!Number.isFinite(finalAmount)||finalAmount<=0;
  function start(){if(!items.length){setError("Die Einkaufsliste ist noch leer.");return}const next:Run={buyer,store:store==="Andere"?(otherStore.trim()||"Anderer Laden"):store,sortByAisle,paymentMethod:"Karte Wohnung",checked:[],category:sortByAisle?items[0].cat:"Alle Artikel",startedAt:new Date().toISOString()};setRun(next);setError("");setStage("shop")}

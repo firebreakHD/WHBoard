@@ -2,8 +2,9 @@
 
 import {useMemo,useState} from "react";
 import Link from "next/link";
-import {ArrowLeft,BookOpen,ExternalLink,MapPin,Star} from "lucide-react";
+import {ArrowLeft,ExternalLink,MapPin,Star} from "lucide-react";
 import {PageHeading,Panel} from "@/components/ui";
+import {ProspectViewer, type ProspectViewerRetailer} from "@/components/prospect-viewer";
 import {useHouseholdState} from "@/lib/use-household-state";
 
 type ProspectSettings={location:string;radius:number;favorites:string[]};
@@ -17,14 +18,15 @@ const retailers:Retailer[]=[
  {id:"billa-plus",name:"BILLA PLUS",group:"Lebensmittel",url:"https://www.billa.at/unsere-aktionen",kind:"Prospekt",note:"Flugblätter und Aktionen"},
  {id:"lidl",name:"Lidl",group:"Lebensmittel",url:"https://www.lidl.at/c/flugblatt/s10012330",kind:"Prospekt",note:"Flugblätter und Prospekte; Filiale für regionale Angebote wählbar"},
  {id:"penny",name:"PENNY",group:"Lebensmittel",url:"https://www.penny.at/flugblatt",kind:"Prospekt",note:"Wöchentliches Online-Flugblatt"},
- {id:"dm",name:"dm",group:"Drogerie",url:"https://www.dm.at/dm-journal-447278",kind:"Prospekt",note:"dm Journal und immergünstig express online durchblättern"},
- {id:"bipa",name:"BIPA",group:"Drogerie",url:"https://www.bipa.at/angebote",kind:"Angebote",note:"Offizielle Aktionen und Gutscheine"},
+ {id:"dm",name:"dm",group:"Drogerie",url:"https://www.dm.at/dm-journal-447278",kind:"Prospekt",note:"Aktuelles dm Journal direkt als Bildseiten durchblättern"},
+ {id:"bipa",name:"BIPA",group:"Drogerie",url:"https://www.bipa.at/cp/aktionen",kind:"Prospekt",note:"Aktuelle Angebote und Prospektseiten"},
 ];
 const initial:ProspectSettings={location:"",radius:10,favorites:[]};
 
 export default function ProspektePage(){
  const [settings,setSettings,ready]=useHouseholdState<ProspectSettings>("prospectSettings",initial);
  const [filter,setFilter]=useState<"Alle"|"Favoriten">("Alle");
+ const [selected,setSelected]=useState<Retailer|null>(null);
  const displayed=useMemo(()=>{const sorted=[...retailers].sort((a,b)=>Number(settings.favorites.includes(b.id))-Number(settings.favorites.includes(a.id)));return filter==="Favoriten"?sorted.filter(item=>settings.favorites.includes(item.id)):sorted},[filter,settings.favorites]);
  function toggleFavorite(id:string){setSettings(current=>({...current,favorites:current.favorites.includes(id)?current.favorites.filter(item=>item!==id):[...current.favorites,id]}))}
  if(!ready)return <div className="page-stack"><Panel><span className="loading-state">Prospekte werden geladen …</span></Panel></div>;
@@ -32,7 +34,15 @@ export default function ProspektePage(){
   <PageHeading eyebrow="Einkauf" title="Prospekte & Angebote" subtitle="Aktuelle Flugblätter direkt bei den Händlern ansehen." action={<Link className="button button-secondary" href="/einkauf"><ArrowLeft size={15}/> Zur Einkaufsliste</Link>}/>
   <Panel className="prospect-location-panel"><div className="prospect-location-icon"><MapPin size={18}/></div><label><b>Standort merken</b><input value={settings.location} onChange={event=>setSettings(current=>({...current,location:event.target.value}))} placeholder="Ort oder Postleitzahl, z. B. Wien" autoComplete="postal-code"/></label><label className="prospect-radius"><b>Umkreis</b><select value={settings.radius} onChange={event=>setSettings(current=>({...current,radius:Number(event.target.value)}))}>{[5,10,20,30,50].map(radius=><option value={radius} key={radius}>{radius} km</option>)}</select></label><small className="prospect-location-note">Ort und Umkreis werden gemerkt. Händler mit regionalen Flugblättern lassen dich den passenden Markt auf ihrer offiziellen Seite auswählen.</small></Panel>
   <div className="prospect-filter-row"><div><button className={filter==="Alle"?"selected":""} onClick={()=>setFilter("Alle")}>Alle Händler <span>{retailers.length}</span></button><button className={filter==="Favoriten"?"selected":""} onClick={()=>setFilter("Favoriten")}>Favoriten <span>{settings.favorites.length}</span></button></div><small>Offizielle Händlerquellen · ohne erfundene Angebote</small></div>
-  {displayed.length?<section className="prospect-grid">{displayed.map(retailer=><article className="prospect-card" key={retailer.id}><div className="prospect-card-top"><span className="prospect-retailer-mark"><BookOpen size={19}/></span><button className={`prospect-favorite ${settings.favorites.includes(retailer.id)?"active":""}`} onClick={()=>toggleFavorite(retailer.id)} aria-label={`${retailer.name} ${settings.favorites.includes(retailer.id)?"aus Favoriten entfernen":"als Favorit markieren"}`} aria-pressed={settings.favorites.includes(retailer.id)}><Star size={17} fill={settings.favorites.includes(retailer.id)?"currentColor":"none"}/></button></div><small className="prospect-group">{retailer.group} · Offizielle Quelle</small><h2>{retailer.name}</h2><p>{retailer.note}</p><a className="button button-primary prospect-open" href={retailer.url} target="_blank" rel="noreferrer">{retailer.kind} ansehen <ExternalLink size={14}/></a></article>)}</section>:<Panel className="prospect-empty"><Star size={22}/><b>Noch keine Händler favorisiert</b><small>Markiere einen Händler mit dem Stern, damit er hier zuerst erscheint.</small><button className="button button-secondary" onClick={()=>setFilter("Alle")}>Alle Händler ansehen</button></Panel>}
-  <Panel className="prospect-source-note"><b>Quellenhinweis</b><p>Die Händler veröffentlichen ihre aktuellen Prospekte auf eigenen, regelmäßig aktualisierten Seiten. Dort wird auch die jeweilige Region ausgewählt. Eine frei dokumentierte gemeinsame Prospekt-API oder eine erlaubte einheitliche Einbettung ist derzeit nicht verfügbar; deshalb öffnen die Schaltflächen die Originalquelle. Preis- und Rabatt-Highlights werden erst angezeigt, wenn sie aus einer verlässlichen Quelle stammen.</p></Panel>
+  {displayed.length?<section className="prospect-grid">{displayed.map(retailer=><article className="prospect-card" key={retailer.id}>
+    <div className="prospect-card-top"><span className="prospect-group-label">{retailer.group}</span><button className={`prospect-favorite ${settings.favorites.includes(retailer.id)?"active":""}`} onClick={()=>toggleFavorite(retailer.id)} aria-label={`${retailer.name} ${settings.favorites.includes(retailer.id)?"aus Favoriten entfernen":"als Favorit markieren"}`} aria-pressed={settings.favorites.includes(retailer.id)}><Star size={17} fill={settings.favorites.includes(retailer.id)?"currentColor":"none"}/></button></div>
+    <button className="prospect-card-cover" onClick={()=>setSelected(retailer)} aria-label={`${retailer.name} Prospekt öffnen`}>
+      {retailer.kind==="Prospekt"?<img src={`/api/prospekte?retailer=${encodeURIComponent(retailer.id)}&page=1&location=${encodeURIComponent(settings.location)}&raw=1`} alt={`Titelseite des aktuellen ${retailer.name} Flugblatts`} loading="lazy"/>:<div className="prospect-cover-placeholder"><span>{retailer.name}</span><small>Aktuelles Flugblatt</small></div>}
+      <span className="prospect-cover-hint">{retailer.kind==="Prospekt"?"Antippen zum Blättern":"Offizielle Quelle öffnen"}</span>
+    </button>
+    <h2>{retailer.name}</h2><p>{retailer.note}</p><button className="button button-primary prospect-open" onClick={()=>setSelected(retailer)}>{retailer.kind} ansehen <ExternalLink size={14}/></button>
+  </article>)}</section>:<Panel className="prospect-empty"><Star size={22}/><b>Noch keine Händler favorisiert</b><small>Markiere einen Händler mit dem Stern, damit er hier zuerst erscheint.</small><button className="button button-secondary" onClick={()=>setFilter("Alle")}>Alle Händler ansehen</button></Panel>}
+  {selected&&<ProspectViewer retailer={selected as ProspectViewerRetailer} location={settings.location} favorite={settings.favorites.includes(selected.id)} onFavorite={()=>toggleFavorite(selected.id)} onClose={()=>setSelected(null)}/>}
+  <Panel className="prospect-source-note"><b>Quellen</b><p>Bildseiten kommen aus den öffentlichen offiziellen Publikationen von HOFER, BILLA, SPAR, EUROSPAR, INTERSPAR, Lidl, PENNY, dm und BIPA. Die BILLA-Ausgabe richtet sich nach dem gespeicherten Standort.</p></Panel>
  </div>
 }
