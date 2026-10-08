@@ -1,3 +1,30 @@
+## 0.1.106
+
+- Entfernt den Favoritenstern aus den Marktprodukten in der Einkaufssuche und ergänzt ein integriertes X zum Abbrechen in der Einkaufs- und Produktsuche bei Angebote und Prospekte.
+- Zeigt das Markt-Badge nur bei Artikeln aus dem Angebotsraster und speichert es nicht als dauerhafte Produkteigenschaft.
+- Setzt der Einkauf-Tab am Handy die Einkaufsliste zurück, beendet die Suche und schließt Entdecken.
+- Verkürzt den Leerraum nach den letzten Einkaufskacheln am Handy und hält das Suchfeld innerhalb des Inhaltsbereichs.
+
+## 0.1.105
+
+- Entfernt den Favoritenstern aus den gefundenen Marktprodukten in der Einkaufssuche.
+- Ergänzt ein transparentes X im Suchfeld, das die Suche samt Treffern schließt; dasselbe Verhalten gilt für die Produktsuche bei Angebote und Prospekte.
+- Zeigt das Markt-Badge nur bei Artikeln aus dem Angebotsraster; normale Markt-Suchergebnisse erhalten kein dauerhaftes Händler-Badge.
+- Setzt der Einkauf-Tab am Handy die Einkaufsliste zurück, beendet eine offene Suche und schließt Entdecken.
+- Verkürzt den leeren Nachlauf am Ende der Einkaufsliste am Handy auf einen kleinen unteren Abstand.
+
+## 0.1.104
+
+- Ergänzt den Tab „Tageszeit“ mit neun Rezeptideen für Frühstück, Mittagessen, Kaffeezeit oder Abendessen und aktualisiert ihn bei einem Wechsel der Tageszeit.
+- Verbessert die deutsche Zutatenzuordnung, übersetzt englische Zubereitungsschritte samt Zutatenbegriffen und hebt die passenden Produkte in jedem Schritt fett hervor.
+- Setzt die Rezeptportionen beim Öffnen standardmäßig auf zwei.
+- Blendet während der Suche die bereits hinzugefügte Liste aus und hält Produkt- und Marktresultate am Handy in zweispaltigen Kacheln mit vertikalem Seitenscroll.
+- Versteckt die Angebots-Rasterpfeile am Handy und hält Suchfeld sowie Marktauswahl innerhalb der Seitenränder.
+
+## 0.1.103
+
+- Löst das Aktualisieren von Rezepten auch aus, wenn die Ziehgeste auf einer Rezept- oder Zutatenkachel beginnt; beim Scrollen von weiter unten greift der Refresh erst nach Erreichen des oberen Seitenrands.
+
 ## 0.1.102
 
 - Verknüpft kurzes haptisches Feedback für Rezeptwechsel, Portionen, Zutaten, Favoriten und Angebotsaktionen mit der gemeinsamen Einstellung.

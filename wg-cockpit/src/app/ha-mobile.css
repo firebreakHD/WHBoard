@@ -138,6 +138,9 @@
 }
 
 @media (max-width: 760px) {
-  .bring-page { padding-bottom: calc(130px + env(safe-area-inset-bottom)); overflow-anchor: none; }
+  .bring-page { padding-bottom: 0; overflow-anchor: none; }
+  .bring-board { padding-bottom: 12px; }
+  .shopping-search-expanded { flex: 0 0 100%; width: 100%; min-width: 0; margin: 2px 0 0; padding: 7px 9px; }
+  .shopping-search-expanded input { flex: 1; min-width: 0; }
   .shopping-search-dock { bottom: calc(60px + env(safe-area-inset-bottom)); }
 }

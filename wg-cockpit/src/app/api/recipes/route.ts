@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { localizeRecipeAmount, localizeRecipeIngredient } from "@/lib/recipe-localization";
+import { localizeRecipeAmount, localizeRecipeIngredient, localizeRecipeIngredientMentions } from "@/lib/recipe-localization";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,6 +24,7 @@ async function translateLongText(text:string){
   if(current)chunks.push(current);
   return (await Promise.all(chunks.map(chunk=>translateText(chunk)))).join(" ");
 }
+const englishInstructionTerms=/\b(add|mix|stir|cook|heat|preheat|bake|boil|simmer|chop|cut|slice|drain|pour|serve|until|then|with|into|over|season|remove|place|combine|whisk|fry|roast|minutes?|tablespoons?|teaspoons?|the|and)\b/i;
 async function searchTerms(query:string){const key=normalizeQuery(query);const aliases=germanQueryAliases[key]??germanQueryAliases[key.replace(/\s+/g,"")];const translated=aliases?.[0]??await translateText(query,"de|en");return [...new Set([translated,...(aliases??[]),query].map(value=>value.trim()).filter(Boolean))].slice(0,4)}
 
 async function cooklangSearch(term:string,page=1,locale?:string){const url=new URL("https://recipes.cooklang.org/api/search");url.searchParams.set("q",term);url.searchParams.set("limit","100");url.searchParams.set("page",`${page}`);if(locale)url.searchParams.set("locale",locale);const response=await fetch(url,{next:{revalidate:1800},signal:AbortSignal.timeout(9000),headers:{accept:"application/json"}});if(!response.ok)throw new Error(`Cooklang antwortet mit ${response.status}.`);return response.json() as Promise<{results?:CooklangSearchItem[]}>}
@@ -66,8 +67,10 @@ function mapMeal(meal: Meal | null | undefined): Recipe | null {
 }
 
 async function germanize(recipe:Recipe):Promise<Recipe>{
-  if(recipe.locale?.toLowerCase().startsWith("de"))return recipe;
-  const [name,category,area,...instructions]=await Promise.all([recipe.name,recipe.category,recipe.area].map(text=>translateText(text,"en|de")).concat(recipe.instructions.map(text=>translateLongText(text))));
+  const germanSource=recipe.locale?.toLowerCase().startsWith("de")??false;
+  const metadata:[string,string,string]=germanSource?[recipe.name,recipe.category,recipe.area]:await Promise.all([recipe.name,recipe.category,recipe.area].map(text=>translateText(text,"en|de"))) as [string,string,string];
+  const [name,category,area]=metadata;
+  const instructions=await Promise.all(recipe.instructions.map(async text=>localizeRecipeIngredientMentions(englishInstructionTerms.test(text)?await translateLongText(text):text)));
   return{...recipe,name,category,area,instructions};
 }
 
