@@ -2,7 +2,7 @@
 
 import {useEffect,useMemo,useRef,useState} from "react";
 import Link from "next/link";
-import {ArrowLeft,ChevronLeft,ChevronRight,ExternalLink,MapPin,Percent,Star} from "lucide-react";
+import {ArrowLeft,ChevronLeft,ChevronRight,ExternalLink,LoaderCircle,MapPin,Percent,Search,Star} from "lucide-react";
 import {PageHeading,Panel} from "@/components/ui";
 import {ProspectViewer, type ProspectViewerRetailer} from "@/components/prospect-viewer";
 import {useHouseholdState} from "@/lib/use-household-state";
@@ -11,6 +11,7 @@ type ProspectSettings={location:string;radius:number;favorites:string[]};
 type Retailer={id:string;name:string;group:string;url:string;kind:"Prospekt"|"Angebote";note:string};
 type Offer={id:string;title:string;unit:string;price:number;oldPrice:number|null;image:string|null;url:string|null;store:string;storeName:string;discount:number|null;condition:string|null};
 type OfferResponse={offers:Offer[];updatedAt:string|null;error?:string};
+type PlaceSuggestion={id:string;label:string;primary:string;secondary:string};
 const retailers:Retailer[]=[
  {id:"hofer",name:"HOFER",group:"Lebensmittel",url:"https://www.hofer.at/flugblatt",kind:"Prospekt",note:"Aktuelles Flugblatt und weitere Aktionen"},
  {id:"spar",name:"SPAR",group:"Lebensmittel",url:"https://www.spar.at/aktionen",kind:"Prospekt",note:"Flugblätter nach Region und Markt"},
@@ -27,6 +28,7 @@ const initial:ProspectSettings={location:"",radius:10,favorites:[]};
 
 export default function ProspektePage(){
  const [settings,setSettings,ready]=useHouseholdState<ProspectSettings>("prospectSettings",initial);
+ const [locationQuery,setLocationQuery]=useState("");const [placeSuggestions,setPlaceSuggestions]=useState<PlaceSuggestion[]>([]);const [locationFocused,setLocationFocused]=useState(false);const [locationSearching,setLocationSearching]=useState(false);const [locationError,setLocationError]=useState("");const [activePlace,setActivePlace]=useState(0);
  const [filter,setFilter]=useState<"Alle"|"Favoriten">("Alle");
  const [selected,setSelected]=useState<Retailer|null>(null);
  const [offers,setOffers]=useState<Offer[]>([]);
@@ -34,15 +36,27 @@ export default function ProspektePage(){
  const [offersLoading,setOffersLoading]=useState(true);
  const [offersUpdated,setOffersUpdated]=useState<string|null>(null);
  const offerTrack=useRef<HTMLDivElement>(null);
+ useEffect(()=>{if(ready)setLocationQuery(settings.location)},[ready,settings.location]);
+ useEffect(()=>{
+  const query=locationQuery.trim();
+  if(query.length<2||query===settings.location){setPlaceSuggestions([]);setLocationSearching(false);setLocationError("");return}
+  const controller=new AbortController();
+  const timer=window.setTimeout(()=>{
+   setLocationSearching(true);setLocationError("");
+   void fetch(`/api/places?q=${encodeURIComponent(query)}`,{signal:controller.signal}).then(async response=>{const data=await response.json() as {results?:PlaceSuggestion[];error?:string};if(!response.ok)throw new Error(data.error||"Standortsuche nicht verfügbar.");setPlaceSuggestions(data.results??[]);setActivePlace(0)}).catch(error=>{if(error instanceof DOMException&&error.name==="AbortError")return;setPlaceSuggestions([]);setLocationError(error instanceof Error?error.message:"Standortsuche nicht verfügbar.")}).finally(()=>{if(!controller.signal.aborted)setLocationSearching(false)});
+  },500);
+  return()=>{window.clearTimeout(timer);controller.abort()};
+ },[locationQuery,settings.location]);
  useEffect(()=>{let active=true;fetch("/api/prospekte/angebote").then(response=>response.json() as Promise<OfferResponse>).then(data=>{if(!active)return;setOffers(data.offers??[]);setOffersUpdated(data.updatedAt??null)}).catch(()=>{}).finally(()=>{if(active)setOffersLoading(false)});return()=>{active=false}},[]);
  const offerStores=useMemo(()=>[...new Map(offers.map(offer=>[offer.store,offer.storeName])).entries()], [offers]);
  const visibleOffers=useMemo(()=>offerStore==="Alle"?offers:offers.filter(offer=>offer.store===offerStore),[offerStore,offers]);
  const displayed=useMemo(()=>{const sorted=[...retailers].sort((a,b)=>Number(settings.favorites.includes(b.id))-Number(settings.favorites.includes(a.id)));return filter==="Favoriten"?sorted.filter(item=>settings.favorites.includes(item.id)):sorted},[filter,settings.favorites]);
  function toggleFavorite(id:string){setSettings(current=>({...current,favorites:current.favorites.includes(id)?current.favorites.filter(item=>item!==id):[...current.favorites,id]}))}
+ function chooseLocation(location:string){setSettings(current=>({...current,location}));setLocationQuery(location);setPlaceSuggestions([]);setLocationFocused(false);setLocationError("")}
  if(!ready)return <div className="page-stack"><Panel><span className="loading-state">Prospekte werden geladen …</span></Panel></div>;
  return <div className="page-stack prospect-page">
   <PageHeading eyebrow="Einkauf" title="Prospekte & Angebote" subtitle="Aktuelle Flugblätter direkt bei den Händlern ansehen." action={<Link className="button button-secondary" href="/einkauf"><ArrowLeft size={15}/> Zur Einkaufsliste</Link>}/>
-  <Panel className="prospect-location-panel"><div className="prospect-location-icon"><MapPin size={18}/></div><label><b>Standort merken</b><input value={settings.location} onChange={event=>setSettings(current=>({...current,location:event.target.value}))} placeholder="Ort oder Postleitzahl, z. B. Wien" autoComplete="postal-code"/></label><label className="prospect-radius"><b>Umkreis</b><select value={settings.radius} onChange={event=>setSettings(current=>({...current,radius:Number(event.target.value)}))}>{[5,10,20,30,50].map(radius=><option value={radius} key={radius}>{radius} km</option>)}</select></label><small className="prospect-location-note">Ort und Umkreis werden gemerkt. Händler mit regionalen Flugblättern lassen dich den passenden Markt auf ihrer offiziellen Seite auswählen.</small></Panel>
+  <Panel className="prospect-location-panel"><div className="prospect-location-icon"><MapPin size={18}/></div><label className="prospect-location-input"><b>Standort merken</b><span className="prospect-location-control"><Search size={16}/><input role="combobox" aria-autocomplete="list" aria-expanded={locationFocused&&placeSuggestions.length>0} aria-controls="prospect-location-suggestions" value={locationQuery} onChange={event=>{setLocationQuery(event.target.value);setLocationFocused(true);setPlaceSuggestions([]);setActivePlace(0)}} onFocus={()=>setLocationFocused(true)} onBlur={()=>window.setTimeout(()=>setLocationFocused(false),140)} onKeyDown={event=>{if(event.key==="ArrowDown"&&placeSuggestions.length){event.preventDefault();setActivePlace(index=>Math.min(index+1,placeSuggestions.length-1))}else if(event.key==="ArrowUp"&&placeSuggestions.length){event.preventDefault();setActivePlace(index=>Math.max(0,index-1))}else if(event.key==="Enter"){event.preventDefault();if(placeSuggestions[activePlace])chooseLocation(placeSuggestions[activePlace].label);else if(locationQuery.trim())chooseLocation(locationQuery.trim())}else if(event.key==="Escape"){setLocationFocused(false);setPlaceSuggestions([])}}} placeholder="Ort, Adresse oder Postleitzahl" autoComplete="off"/><span className="prospect-location-status" aria-live="polite">{locationSearching?<LoaderCircle size={15} className="prospect-location-spinner"/>:null}</span></span>{locationFocused&&(placeSuggestions.length>0||locationQuery.trim().length>=2)&&<div className="prospect-place-suggestions" id="prospect-location-suggestions" role="listbox">{placeSuggestions.map((place,index)=><button type="button" role="option" aria-selected={activePlace===index} className={activePlace===index?"active":""} key={place.id} onMouseDown={event=>event.preventDefault()} onClick={()=>chooseLocation(place.label)}><MapPin size={16}/><span><b>{place.primary}</b>{place.secondary&&<small>{place.secondary}</small>}</span></button>)}{locationSearching&&<small className="prospect-place-state">Standorte werden gesucht …</small>}{!locationSearching&&!placeSuggestions.length&&<div className="prospect-place-empty"><span>{locationError||"Kein genauer Treffer gefunden."}</span><button type="button" onMouseDown={event=>event.preventDefault()} onClick={()=>chooseLocation(locationQuery.trim())}>Eingabe als Standort merken</button></div>}</div>}</label><label className="prospect-radius"><b>Umkreis</b><select value={settings.radius} onChange={event=>setSettings(current=>({...current,radius:Number(event.target.value)}))}>{[5,10,20,30,50].map(radius=><option value={radius} key={radius}>{radius} km</option>)}</select></label><small className="prospect-location-note">Standort wird nach der Auswahl gespeichert. Händler zeigen passende Märkte auf ihrer offiziellen Seite.</small><small className="prospect-geocoder-credit">Ortsvorschläge: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap-Mitwirkende</a> · Photon</small></Panel>
   <section className="prospect-offers" aria-label="Aktuelle reduzierte Produkte">
    <div className="prospect-offers-heading"><div><span className="prospect-offers-eyebrow"><Percent size={13}/> Angebote aus den Prospekten</span><h2>Diese Woche günstiger</h2><p>Ein kurzer Blick auf aktuelle Aktionen lohnt sich.</p></div><div className="prospect-offer-arrows"><button onClick={()=>offerTrack.current?.scrollBy({left:-340,behavior:"smooth"})} aria-label="Angebote nach links"><ChevronLeft size={18}/></button><button onClick={()=>offerTrack.current?.scrollBy({left:340,behavior:"smooth"})} aria-label="Angebote nach rechts"><ChevronRight size={18}/></button></div></div>
    {offerStores.length>0&&<div className="prospect-offer-filters" aria-label="Angebote nach Händler filtern"><button className={offerStore==="Alle"?"selected":""} onClick={()=>setOfferStore("Alle")}>Alle <span>{offers.length}</span></button>{offerStores.map(([id,name])=><button key={id} className={offerStore===id?"selected":""} onClick={()=>setOfferStore(id)}>{name}</button>)}</div>}

@@ -1,3 +1,28 @@
+## 0.1.81
+
+- Verhindert doppelte Zufallsvorschläge und rechnet auch einfache Bruchmengen bei der Portionsanpassung um.
+
+## 0.1.80
+
+- Ergänzt im Einkaufsbereich „Rezepte & Inspiration“ mit Suche, Favoriten, eigenen WG-Rezepten und einer Übersicht häufig übernommener Rezepte.
+- Zeigt Rezeptzutaten vor dem Hinzufügen einzeln an; typische Vorräte wie Butter, Öl, Kaffee oder Gewürze sind zunächst abgewählt und lassen sich antippen.
+- Passt Mengen an die gewählte Portionszahl an, übernimmt nur ausgewählte Zutaten in die gemeinsame Liste und führt gleiche Produkte mit ihren Mengen zusammen.
+- Zeigt passende aktuelle Angebote bei erkannten Zutaten an und verlinkt Rezeptquelle sowie Originalrezept.
+- Ergänzt die Standortsuche für Prospekte um eine manuelle Übernahme, falls der Geocoder nicht erreichbar ist.
+
+## 0.1.79
+
+- Ergänzt Standortvorschläge beim Tippen mit Ort, Adresse oder Postleitzahl und speichert die Auswahl erst nach dem Antippen.
+- Zeigt passende österreichische Orte und Adressen an; bei Nichterreichbarkeit kann die Eingabe weiterhin manuell übernommen werden.
+- Ergänzt den Herkunftshinweis für die OpenStreetMap-basierten Ortsvorschläge.
+
+## 0.1.78
+
+- Aktiviert „Einkauf starten“ nur, wenn Artikel auf der Einkaufsliste stehen; der Bon-Einkauf bleibt auch bei leerer Liste verfügbar.
+- Ersetzt den Kamera-Aufruf beim Bon durch eine Live-Vorschau mit Beleg-Rahmen und rundem Auslöser; Datei-Upload bleibt verfügbar.
+- Macht Kundenkarten bearbeitbar und erlaubt Code- oder Bildkarten mit optionalem Code und optionaler Notiz.
+- Öffnet gespeicherte Kartenbilder bei Antippen groß und schließt die Ansicht bei Klick außerhalb.
+
 ## 0.1.77
 
 - Zeigt Prospektseiten standardmäßig etwas kleiner mit sichtbarem Rand; Zoom-out ist bis 70 % möglich, damit ganze Seiten leichter ins Bild passen.
