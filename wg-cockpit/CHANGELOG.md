@@ -1,3 +1,24 @@
+## 0.1.76
+
+- Blendet am Handy die untere Hauptnavigation aus, solange ein Prospekt geöffnet ist, und zeigt den Prospekt bildschirmfüllend an.
+
+## 0.1.75
+
+- Ergänzt eine verstellbare Prospektvergrößerung mit Zwei-Finger-Zoom und Verschieben am Handy sowie Mausrad, Ziehen und Plus/Minus-Steuerung am PC.
+- Verhindert, dass beim Verschieben einer vergrößerten Seite versehentlich zur nächsten Prospektseite gewechselt wird.
+
+## 0.1.74
+
+- Ergänzt über den Prospekten eine horizontal durchscrollbare Angebotsleiste mit Händlerfiltern, Produktbildern, Aktionspreisen und verfügbaren Streichpreisen.
+- Zeigt die Angebotsquelle und ihren Aktualisierungsstand an; Händler ohne Angebotsdaten bleiben über ihre Prospekte erreichbar.
+- Repariert langes Drücken zum Bearbeiten in Favoriten und „Alle Artikel“; Kacheln auf eurer Einkaufsliste bleiben ausschließlich zum Entfernen antippbar.
+
+## 0.1.72
+
+- Synchronisiert externe Änderungen an der Einkaufsliste mit einem laufenden Einkaufsstart; entfernte Artikel verschwinden auch aus Fortschritt und offenen Kategorien.
+- Beendet den Einkaufsstart automatisch, wenn die Liste außerhalb des Moduls geleert wird, und setzt den Button wieder auf „Einkauf starten“.
+- Ergänzt „Einkauf abbrechen“, das den laufenden Status löscht; Schließen pausiert weiterhin zum späteren Fortsetzen.
+
 ## 0.1.71
 
 - Richtet das Einstellungs-Zahnrad am mobilen Dashboard rechts neben der Überschrift aus.

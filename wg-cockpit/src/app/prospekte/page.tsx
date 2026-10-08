@@ -1,14 +1,16 @@
 "use client";
 
-import {useMemo,useState} from "react";
+import {useEffect,useMemo,useRef,useState} from "react";
 import Link from "next/link";
-import {ArrowLeft,ExternalLink,MapPin,Star} from "lucide-react";
+import {ArrowLeft,ChevronLeft,ChevronRight,ExternalLink,MapPin,Percent,Star} from "lucide-react";
 import {PageHeading,Panel} from "@/components/ui";
 import {ProspectViewer, type ProspectViewerRetailer} from "@/components/prospect-viewer";
 import {useHouseholdState} from "@/lib/use-household-state";
 
 type ProspectSettings={location:string;radius:number;favorites:string[]};
 type Retailer={id:string;name:string;group:string;url:string;kind:"Prospekt"|"Angebote";note:string};
+type Offer={id:string;title:string;unit:string;price:number;oldPrice:number|null;image:string|null;url:string|null;store:string;storeName:string;discount:number|null;condition:string|null};
+type OfferResponse={offers:Offer[];updatedAt:string|null;error?:string};
 const retailers:Retailer[]=[
  {id:"hofer",name:"HOFER",group:"Lebensmittel",url:"https://www.hofer.at/flugblatt",kind:"Prospekt",note:"Aktuelles Flugblatt und weitere Aktionen"},
  {id:"spar",name:"SPAR",group:"Lebensmittel",url:"https://www.spar.at/aktionen",kind:"Prospekt",note:"Flugblätter nach Region und Markt"},
@@ -27,12 +29,29 @@ export default function ProspektePage(){
  const [settings,setSettings,ready]=useHouseholdState<ProspectSettings>("prospectSettings",initial);
  const [filter,setFilter]=useState<"Alle"|"Favoriten">("Alle");
  const [selected,setSelected]=useState<Retailer|null>(null);
+ const [offers,setOffers]=useState<Offer[]>([]);
+ const [offerStore,setOfferStore]=useState("Alle");
+ const [offersLoading,setOffersLoading]=useState(true);
+ const [offersUpdated,setOffersUpdated]=useState<string|null>(null);
+ const offerTrack=useRef<HTMLDivElement>(null);
+ useEffect(()=>{let active=true;fetch("/api/prospekte/angebote").then(response=>response.json() as Promise<OfferResponse>).then(data=>{if(!active)return;setOffers(data.offers??[]);setOffersUpdated(data.updatedAt??null)}).catch(()=>{}).finally(()=>{if(active)setOffersLoading(false)});return()=>{active=false}},[]);
+ const offerStores=useMemo(()=>[...new Map(offers.map(offer=>[offer.store,offer.storeName])).entries()], [offers]);
+ const visibleOffers=useMemo(()=>offerStore==="Alle"?offers:offers.filter(offer=>offer.store===offerStore),[offerStore,offers]);
  const displayed=useMemo(()=>{const sorted=[...retailers].sort((a,b)=>Number(settings.favorites.includes(b.id))-Number(settings.favorites.includes(a.id)));return filter==="Favoriten"?sorted.filter(item=>settings.favorites.includes(item.id)):sorted},[filter,settings.favorites]);
  function toggleFavorite(id:string){setSettings(current=>({...current,favorites:current.favorites.includes(id)?current.favorites.filter(item=>item!==id):[...current.favorites,id]}))}
  if(!ready)return <div className="page-stack"><Panel><span className="loading-state">Prospekte werden geladen …</span></Panel></div>;
  return <div className="page-stack prospect-page">
   <PageHeading eyebrow="Einkauf" title="Prospekte & Angebote" subtitle="Aktuelle Flugblätter direkt bei den Händlern ansehen." action={<Link className="button button-secondary" href="/einkauf"><ArrowLeft size={15}/> Zur Einkaufsliste</Link>}/>
   <Panel className="prospect-location-panel"><div className="prospect-location-icon"><MapPin size={18}/></div><label><b>Standort merken</b><input value={settings.location} onChange={event=>setSettings(current=>({...current,location:event.target.value}))} placeholder="Ort oder Postleitzahl, z. B. Wien" autoComplete="postal-code"/></label><label className="prospect-radius"><b>Umkreis</b><select value={settings.radius} onChange={event=>setSettings(current=>({...current,radius:Number(event.target.value)}))}>{[5,10,20,30,50].map(radius=><option value={radius} key={radius}>{radius} km</option>)}</select></label><small className="prospect-location-note">Ort und Umkreis werden gemerkt. Händler mit regionalen Flugblättern lassen dich den passenden Markt auf ihrer offiziellen Seite auswählen.</small></Panel>
+  <section className="prospect-offers" aria-label="Aktuelle reduzierte Produkte">
+   <div className="prospect-offers-heading"><div><span className="prospect-offers-eyebrow"><Percent size={13}/> Angebote aus den Prospekten</span><h2>Diese Woche günstiger</h2><p>Ein kurzer Blick auf aktuelle Aktionen lohnt sich.</p></div><div className="prospect-offer-arrows"><button onClick={()=>offerTrack.current?.scrollBy({left:-340,behavior:"smooth"})} aria-label="Angebote nach links"><ChevronLeft size={18}/></button><button onClick={()=>offerTrack.current?.scrollBy({left:340,behavior:"smooth"})} aria-label="Angebote nach rechts"><ChevronRight size={18}/></button></div></div>
+   {offerStores.length>0&&<div className="prospect-offer-filters" aria-label="Angebote nach Händler filtern"><button className={offerStore==="Alle"?"selected":""} onClick={()=>setOfferStore("Alle")}>Alle <span>{offers.length}</span></button>{offerStores.map(([id,name])=><button key={id} className={offerStore===id?"selected":""} onClick={()=>setOfferStore(id)}>{name}</button>)}</div>}
+   {offersLoading?<div className="prospect-offers-loading">Aktuelle Angebote werden geladen …</div>:visibleOffers.length>0?<div className="prospect-offer-track" ref={offerTrack}>{visibleOffers.map(offer=><a className="prospect-offer-card" href={offer.url??"https://sparkorb.at/angebote"} target="_blank" rel="noreferrer" key={`${offer.store}-${offer.id}`} title={`${offer.title} bei ${offer.storeName}`}>
+     <div className="prospect-offer-image">{offer.image?<img src={offer.image} alt="" loading="lazy"/>:<span>{offer.storeName}</span>}{offer.discount!==null&&<span className="prospect-offer-discount">−{offer.discount}%</span>}</div>
+     <div className="prospect-offer-copy"><span className="prospect-offer-store">{offer.storeName}</span><b>{offer.title}</b>{offer.unit&&<small>{offer.unit}</small>}{offer.condition&&<small className="prospect-offer-condition">{offer.condition}</small>}<div className="prospect-offer-prices"><strong>{offer.price.toLocaleString("de-AT",{style:"currency",currency:"EUR"})}</strong>{offer.oldPrice!==null&&<del>{offer.oldPrice.toLocaleString("de-AT",{style:"currency",currency:"EUR"})}</del>}</div></div>
+    </a>)}</div>:<div className="prospect-offers-empty">{offersLoading?"":"Angebote sind gerade nicht abrufbar. Die Prospekte darunter bleiben verfügbar."} <a href="https://sparkorb.at/angebote" target="_blank" rel="noreferrer">Angebote öffnen</a></div>}
+   {!offersLoading&&offers.length>0&&<small className="prospect-offers-source">Preise: Sparkorb · {offersUpdated?`Stand ${offersUpdated}`:"täglich aktualisiert"} · Angebot beim Händler prüfen</small>}
+  </section>
   <div className="prospect-filter-row"><div><button className={filter==="Alle"?"selected":""} onClick={()=>setFilter("Alle")}>Alle Händler <span>{retailers.length}</span></button><button className={filter==="Favoriten"?"selected":""} onClick={()=>setFilter("Favoriten")}>Favoriten <span>{settings.favorites.length}</span></button></div><small>Offizielle Händlerquellen · ohne erfundene Angebote</small></div>
   {displayed.length?<section className="prospect-grid">{displayed.map(retailer=><article className="prospect-card" key={retailer.id}>
     <div className="prospect-card-top"><span className="prospect-group-label">{retailer.group}</span><button className={`prospect-favorite ${settings.favorites.includes(retailer.id)?"active":""}`} onClick={()=>toggleFavorite(retailer.id)} aria-label={`${retailer.name} ${settings.favorites.includes(retailer.id)?"aus Favoriten entfernen":"als Favorit markieren"}`} aria-pressed={settings.favorites.includes(retailer.id)}><Star size={17} fill={settings.favorites.includes(retailer.id)?"currentColor":"none"}/></button></div>

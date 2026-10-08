@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, ExternalLink, Heart, LoaderCircle, Share2, X, ZoomIn, ZoomOut } from "lucide-react";
 
 export type ProspectViewerRetailer = { id: string; name: string; url: string };
@@ -19,11 +20,96 @@ export function ProspectViewer({ retailer, location, favorite, onFavorite, onClo
   const [image, setImage] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [zoomed, setZoomed] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
   const [direction, setDirection] = useState<"next" | "previous">("next");
   const [external, setExternal] = useState(false);
-  const start = useRef<{ x: number; y: number } | null>(null);
+  const pageRef = useRef<HTMLElement>(null);
+  const zoomRef = useRef(1);
+  const panRef = useRef({ x: 0, y: 0 });
+  const pointers = useRef(new Map<number, { x: number; y: number }>());
+  const gesture = useRef<
+    | { mode: "page"; startX: number; startY: number }
+    | { mode: "pan"; startX: number; startY: number; panX: number; panY: number }
+    | { mode: "pinch"; startDistance: number; startZoom: number }
+    | null
+  >(null);
   const navigationLock = useRef(false);
+  const zoomed = zoom > 1.001;
+
+  function setZoomLevel(value: number) {
+    const next = Math.max(1, Math.min(3, Math.round(value * 100) / 100));
+    zoomRef.current = next;
+    setZoom(next);
+    if (next <= 1) { panRef.current = { x: 0, y: 0 }; setPan({ x: 0, y: 0 }); }
+  }
+
+  function setPanPosition(x: number, y: number, scale = zoomRef.current) {
+    const bounds = pageRef.current?.getBoundingClientRect();
+    const maxX = bounds ? bounds.width * (scale - 1) / 2 : 0;
+    const maxY = bounds ? bounds.height * (scale - 1) / 2 : 0;
+    const next = { x: Math.max(-maxX, Math.min(maxX, x)), y: Math.max(-maxY, Math.min(maxY, y)) };
+    panRef.current = next;
+    setPan(next);
+  }
+
+  function pointerDistance() {
+    const [first, second] = [...pointers.current.values()];
+    return first && second ? Math.hypot(first.x - second.x, first.y - second.y) : 0;
+  }
+
+  function pointerDown(event: ReactPointerEvent<HTMLElement>) {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    const point = { x: event.clientX, y: event.clientY };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    pointers.current.set(event.pointerId, point);
+    if (pointers.current.size >= 2) {
+      gesture.current = { mode: "pinch", startDistance: pointerDistance(), startZoom: zoomRef.current };
+    } else if (zoomRef.current > 1.001) {
+      gesture.current = { mode: "pan", startX: point.x, startY: point.y, panX: panRef.current.x, panY: panRef.current.y };
+    } else {
+      gesture.current = { mode: "page", startX: point.x, startY: point.y };
+    }
+  }
+
+  function pointerMove(event: ReactPointerEvent<HTMLElement>) {
+    if (!pointers.current.has(event.pointerId)) return;
+    pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    const current = gesture.current;
+    if (pointers.current.size >= 2 && current?.mode === "pinch") {
+      const distance = pointerDistance();
+      if (current.startDistance > 0 && distance > 0) setZoomLevel(current.startZoom * distance / current.startDistance);
+    } else if (pointers.current.size === 1 && current?.mode === "pan") {
+      setPanPosition(current.panX + event.clientX - current.startX, current.panY + event.clientY - current.startY);
+    }
+  }
+
+  function pointerEnd(event: ReactPointerEvent<HTMLElement>) {
+    const current = gesture.current;
+    const origin = pointers.current.get(event.pointerId);
+    if (current?.mode === "page" && origin) {
+      const dx = event.clientX - current.startX;
+      const dy = event.clientY - current.startY;
+      if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.2) changePage(page + (dx < 0 ? 1 : -1));
+    }
+    pointers.current.delete(event.pointerId);
+    if (pointers.current.size >= 2) gesture.current = { mode: "pinch", startDistance: pointerDistance(), startZoom: zoomRef.current };
+    else if (pointers.current.size === 1 && zoomRef.current > 1.001) {
+      const [remaining] = [...pointers.current.values()];
+      gesture.current = { mode: "pan", startX: remaining.x, startY: remaining.y, panX: panRef.current.x, panY: panRef.current.y };
+    } else if (pointers.current.size === 0) gesture.current = null;
+  }
+
+  useEffect(() => {
+    const viewport = pageRef.current;
+    if (!viewport) return;
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      setZoomLevel(zoomRef.current + (event.deltaY < 0 ? 0.15 : -0.15));
+    };
+    viewport.addEventListener("wheel", onWheel, { passive: false });
+    return () => viewport.removeEventListener("wheel", onWheel);
+  }, [image]);
 
   const loadPage = useCallback(async (nextPage: number): Promise<number | null> => {
   if (!imageFlyerRetailers.has(retailer.id)) {
@@ -64,6 +150,8 @@ export function ProspectViewer({ retailer, location, favorite, onFavorite, onClo
 
   const changePage = useCallback((next: number) => {
     if (loading || navigationLock.current || zoomed || next < 1 || next > pageCount || next === page) return;
+    setZoomLevel(1);
+    setPanPosition(0, 0, 1);
     setDirection(next > page ? "next" : "previous");
     navigationLock.current = true;
     void loadPage(next).finally(() => { navigationLock.current = false; });
@@ -73,6 +161,8 @@ export function ProspectViewer({ retailer, location, favorite, onFavorite, onClo
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
       if (event.repeat) return;
+      if (event.key === "+" || event.key === "=") { event.preventDefault(); setZoomLevel(zoomRef.current + 0.25); }
+      if (event.key === "-" || event.key === "_") { event.preventDefault(); setZoomLevel(zoomRef.current - 0.25); }
       if (event.key === "ArrowLeft") { event.preventDefault(); changePage(page - 1); }
       if (event.key === "ArrowRight") { event.preventDefault(); changePage(page + 1); }
     };
@@ -82,13 +172,18 @@ export function ProspectViewer({ retailer, location, favorite, onFavorite, onClo
     return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = previousOverflow; };
   }, [changePage, onClose, page]);
 
+  useEffect(() => {
+    document.body.classList.add("prospect-viewer-open");
+    return () => document.body.classList.remove("prospect-viewer-open");
+  }, []);
+
   async function share() {
     const shareData = { title: `${retailer.name} Prospekt`, url: retailer.url };
     if (navigator.share) { try { await navigator.share(shareData); return; } catch { /* user closed share sheet */ } }
     try { await navigator.clipboard.writeText(retailer.url); } catch { window.open(retailer.url, "_blank", "noopener,noreferrer"); }
   }
 
-  return <div className="prospect-viewer-scrim" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
+  const viewer = <div className="prospect-viewer-scrim" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
     <section className="prospect-viewer" role="dialog" aria-modal="true" aria-label={`${retailer.name} Prospekt`}>
       <header className="prospect-viewer-header">
         <button className="prospect-viewer-icon prospect-viewer-close" onClick={onClose} aria-label="Schließen"><X size={24}/></button>
@@ -99,13 +194,9 @@ export function ProspectViewer({ retailer, location, favorite, onFavorite, onClo
         </div>
       </header>
       {external ? <div className="prospect-viewer-fallback"><div className="prospect-viewer-fallback-copy"><b>Prospekt direkt beim Händler öffnen</b><span>Für diesen Händler ist kein frei zugänglicher Bildseiten-Feed verfügbar.</span><a className="button button-primary" href={retailer.url} target="_blank" rel="noreferrer">Offizielle Quelle öffnen <ExternalLink size={15}/></a></div></div> : <>
-        <main className={`prospect-viewer-page ${zoomed ? "is-zoomed" : ""}`} onTouchStart={event => { if (!zoomed) start.current = { x: event.touches[0].clientX, y: event.touches[0].clientY }; }} onTouchEnd={event => {
-          const origin = start.current; start.current = null; if (!origin || zoomed) return;
-          const dx = event.changedTouches[0].clientX - origin.x; const dy = event.changedTouches[0].clientY - origin.y;
-          if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.2) changePage(page + (dx < 0 ? 1 : -1));
-        }}>
-          {loading ? <div className="prospect-viewer-loading"><LoaderCircle size={24} className="prospect-viewer-spinner"/><span>Seite wird geladen …</span></div> : error ? <div className="prospect-viewer-loading prospect-viewer-error"><span>{error}</span><a className="button button-secondary" href={retailer.url} target="_blank" rel="noreferrer">Originalprospekt öffnen <ExternalLink size={14}/></a></div> : <img key={image} className={`prospect-flyer-image slide-${direction}`} src={image} alt={`${retailer.name} Prospektseite ${page}`} draggable={false} />}
-          {!external && !loading && !error && <button className="prospect-viewer-zoom" onClick={() => setZoomed(value => !value)} aria-label={zoomed ? "Ansicht verkleinern" : "Ansicht vergrößern"}>{zoomed ? <ZoomOut size={19}/> : <ZoomIn size={19}/>}</button>}
+        <main ref={pageRef} className={`prospect-viewer-page ${zoomed ? "is-zoomed" : ""}`} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerEnd} onPointerCancel={pointerEnd}>
+          {loading ? <div className="prospect-viewer-loading"><LoaderCircle size={24} className="prospect-viewer-spinner"/><span>Seite wird geladen …</span></div> : error ? <div className="prospect-viewer-loading prospect-viewer-error"><span>{error}</span><a className="button button-secondary" href={retailer.url} target="_blank" rel="noreferrer">Originalprospekt öffnen <ExternalLink size={14}/></a></div> : <img key={image} className={`prospect-flyer-image slide-${direction}`} style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }} src={image} alt={`${retailer.name} Prospektseite ${page}`} draggable={false} />}
+          {!external && !loading && !error && <div className="prospect-viewer-zoom-controls" onPointerDown={event=>event.stopPropagation()}><button onClick={()=>setZoomLevel(zoomRef.current-.25)} disabled={!zoomed} aria-label="Ansicht verkleinern"><ZoomOut size={18}/></button><span>{Math.round(zoom*100)}%</span><button onClick={()=>setZoomLevel(zoomRef.current+.25)} disabled={zoom>=2.99} aria-label="Ansicht vergrößern"><ZoomIn size={18}/></button></div>}
         </main>
         <nav className="prospect-viewer-pagination" aria-label="Prospektseiten">
           <button onClick={() => changePage(page - 1)} disabled={page <= 1 || loading} aria-label="Vorherige Seite"><ChevronLeft size={23}/></button>
@@ -115,4 +206,5 @@ export function ProspectViewer({ retailer, location, favorite, onFavorite, onClo
       </>}
     </section>
   </div>;
+  return typeof document === "undefined" ? null : createPortal(viewer, document.body);
 }

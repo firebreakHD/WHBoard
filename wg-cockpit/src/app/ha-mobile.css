@@ -5,6 +5,7 @@
 }
 
 @media (max-width: 760px) {
+  body.prospect-viewer-open .mobile-bottom-nav { display: none !important; }
   html { -webkit-text-size-adjust: 100%; }
   body { overflow: hidden; }
   .app-layout { height: 100dvh; min-height: 0; }

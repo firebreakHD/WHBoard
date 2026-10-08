@@ -13,7 +13,7 @@ LABEL io.hass.version="${BUILD_VERSION}" \
       io.hass.type="app" \
       io.hass.arch="${BUILD_ARCH}"
 WORKDIR /app
-ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 HOSTNAME=127.0.0.1 PORT=3000 WG_DATA_DIR=/data HA_INGRESS_PORT=8099 NEXT_INTERNAL_ORIGIN=http://127.0.0.1:3000
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 NODE_USE_SYSTEM_CA=1 HOSTNAME=127.0.0.1 PORT=3000 WG_DATA_DIR=/data HA_INGRESS_PORT=8099 NEXT_INTERNAL_ORIGIN=http://127.0.0.1:3000
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
 COPY --from=build /app/public ./public
