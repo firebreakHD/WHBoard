@@ -1,3 +1,7 @@
+## 0.1.60
+
+- Repariert den Kartenbild-Upload am PC und macht Kameraaufnahme und Bildauswahl am Handy direkt bedienbar; die native Kamera dient als Fallback, wenn kein Live-Feed verfügbar ist.
+
 ## 0.1.59
 
 - Stellt den Bearbeitungsstift auch bei Favoriten dar.
