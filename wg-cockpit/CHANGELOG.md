@@ -1,3 +1,14 @@
+## 0.1.63
+
+- Repariert den Kartenbild-Upload am PC und ergänzt am Handy eine bedienbare Live-Kamera mit nativer Kamera-Auswahl als Fallback.
+- Ergänzt den Prospektbereich mit gemerktem Standort, Umkreis, Händlerfavoriten und offiziellen Händlerquellen.
+- Ergänzt optionales kurzes Vibrationsfeedback beim Hinzufügen, Entfernen und Abhaken; vereinheitlicht die Kachelhintergründe für gelistete und nicht gelistete Artikel.
+
+## 0.1.61
+
+- Ergänzt optionales, kurzes Vibrationsfeedback beim Hinzufügen, Entfernen und Abhaken in der Einkaufsliste.
+- Vereinheitlicht die Kachelhintergründe auf eine Farbe für Produkte auf der Liste und eine für noch nicht hinzugefügte Produkte.
+
 ## 0.1.60
 
 - Repariert den Kartenbild-Upload am PC und macht Kameraaufnahme und Bildauswahl am Handy direkt bedienbar; die native Kamera dient als Fallback, wenn kein Live-Feed verfügbar ist.

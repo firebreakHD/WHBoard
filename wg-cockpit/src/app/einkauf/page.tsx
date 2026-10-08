@@ -2,7 +2,8 @@
 
 import {useEffect,useMemo,useRef,useState,type MouseEvent as ReactMouseEvent,type PointerEvent as ReactPointerEvent} from "react";
 import {createPortal} from "react-dom";
-import {Camera,Check,Clock3,CreditCard,Copy,Download,FileUp,ImagePlus,Minus,Pencil,Plus,Search,Tag,Trash2,X,Zap} from "lucide-react";
+import Link from "next/link";
+import {BookOpen,Camera,Check,Clock3,CreditCard,Copy,Download,FileUp,ImagePlus,Minus,Pencil,Plus,Search,Tag,Trash2,X,Zap} from "lucide-react";
 import {Panel} from "@/components/ui";
 import {useHouseholdState} from "@/lib/use-household-state";
 import {productIconCategories,productIcons} from "./product-icons";
@@ -38,7 +39,7 @@ export default function Einkauf(){
  const [legacyDone,setLegacyDone,doneReady]=useHouseholdState<string[]>("shoppingDone",[]);
  const [catalogItems,setCatalogItems,catalogReady]=useHouseholdState<Item[]>("shoppingCatalog",initialCatalog);
  const [favoriteNames,setFavoriteNames,favoritesReady]=useHouseholdState<string[]>("shoppingFavorites",[]);
- const [preferences,,preferencesReady]=useHouseholdState<{disableShoppingEditing?:boolean;shoppingStartEnabled?:boolean;shoppingLayout?:"tiles"|"list"}>("preferences",{});
+ const [preferences,,preferencesReady]=useHouseholdState<{disableShoppingEditing?:boolean;shoppingHaptics?:boolean;shoppingStartEnabled?:boolean;shoppingLayout?:"tiles"|"list"}>("preferences",{});
  const [filter,setFilter]=useState("Alle");
  const [favoritesOpen,setFavoritesOpen]=useState(true);
  const [search,setSearch]=useState("");
@@ -57,6 +58,7 @@ export default function Einkauf(){
  const longPressTriggered=useRef(false);
  const longPressOrigin=useRef({x:0,y:0});
  const editorOpen=editor!==null;
+ function haptic(){if(preferences.shoppingHaptics!==false&&typeof navigator!="undefined")navigator.vibrate?.(10)}
  useEffect(()=>{setToastTarget(document.getElementById("shopping-status-slot"))},[]);
  useEffect(()=>{if(!editorOpen&&!cardsOpen)return;const bodyOverflow=document.body.style.overflow;const main=document.querySelector<HTMLElement>(".main-area");const mainOverflow=main?.style.overflow;document.body.style.overflow="hidden";if(main)main.style.overflow="hidden";return()=>{document.body.style.overflow=bodyOverflow;if(main)main.style.overflow=mainOverflow||""}},[editorOpen,cardsOpen]);
  useEffect(()=>{if(searchOpen)shoppingSearchRef.current?.focus()},[searchOpen]);
@@ -122,6 +124,7 @@ export default function Einkauf(){
  }
  function addCatalog(product:Item){
   collapseSearch();
+  haptic();
   let result="";
   setItems(current=>{
    const existing=current.find(x=>x.name.toLocaleLowerCase()===product.name.toLocaleLowerCase());
@@ -130,18 +133,18 @@ export default function Einkauf(){
   });
   setMessage(result||`${product.name} hinzugefügt.`);
  }
-  function addSearchItem(){const name=search.trim();if(!name){beginNew();return}const existing=items.find(item=>item.name.toLocaleLowerCase()===name.toLocaleLowerCase());if(existing){const updated={...existing,qty:incrementQuantity(existing.qty)};setItems(items.map(item=>item.id===existing.id?updated:item));setMessage(`${existing.name}: Menge jetzt ${updated.qty}.`);collapseSearch();return}const category=filter==="Alle"?"Sonstiges":filter;const saved:Item={id:createItemId(),name,cat:category,icon:suggestEmoji(name,category),qty:"1 Stück",priority:["Nichts"]};setItems([saved,...items]);setCatalogItems(current=>current.some(item=>item.name.toLocaleLowerCase()===name.toLocaleLowerCase())?current:[{...saved,id:`catalog-${saved.id}`},...current]);setMessage(`${name} hinzugefügt.`);collapseSearch()}
+  function addSearchItem(){const name=search.trim();if(!name){beginNew();return}haptic();const existing=items.find(item=>item.name.toLocaleLowerCase()===name.toLocaleLowerCase());if(existing){const updated={...existing,qty:incrementQuantity(existing.qty)};setItems(items.map(item=>item.id===existing.id?updated:item));setMessage(`${existing.name}: Menge jetzt ${updated.qty}.`);collapseSearch();return}const category=filter==="Alle"?"Sonstiges":filter;const saved:Item={id:createItemId(),name,cat:category,icon:suggestEmoji(name,category),qty:"1 Stück",priority:["Nichts"]};setItems([saved,...items]);setCatalogItems(current=>current.some(item=>item.name.toLocaleLowerCase()===name.toLocaleLowerCase())?current:[{...saved,id:`catalog-${saved.id}`},...current]);setMessage(`${name} hinzugefügt.`);collapseSearch()}
  function uploadProductImage(file?:File){if(!file)return;if(!file.type.startsWith("image/")){setMessage("Bitte eine Bilddatei auswählen.");return}if(file.size>5*1024*1024){setMessage("Das Bild darf höchstens 5 MB groß sein.");return}const url=URL.createObjectURL(file);const image=new Image();image.onload=()=>{const canvas=document.createElement("canvas");canvas.width=128;canvas.height=128;const context=canvas.getContext("2d");if(!context){URL.revokeObjectURL(url);setMessage("Das Bild konnte nicht verarbeitet werden.");return}const scale=Math.min(128/image.width,128/image.height);const width=image.width*scale;const height=image.height*scale;context.clearRect(0,0,128,128);context.drawImage(image,(128-width)/2,(128-height)/2,width,height);const data=canvas.toDataURL("image/webp",0.76);URL.revokeObjectURL(url);setEditor(current=>current?{...current,icon:data}:current)};image.onerror=()=>{URL.revokeObjectURL(url);setMessage("Das Bild konnte nicht geladen werden.")};image.src=url}
   function editListItem(item:Item){collapseSearch();const catalogItem=catalogItems.find(candidate=>candidate.name.toLocaleLowerCase()===item.name.toLocaleLowerCase());setEditor({...(catalogItem||item),id:item.id,qty:item.qty,favorite:favoriteNames.some(name=>name.toLocaleLowerCase()===item.name.toLocaleLowerCase())});setIsNew(false);setCatalogEdit(false);setTemporaryEdit({targetId:item.id,originalName:item.name});setCustomCategory(categories.includes(item.cat)?"":item.cat)}
   function editCatalog(item:Item){collapseSearch();setCatalogEdit(true);setTemporaryEdit(null);setIsNew(false);setEditor({...item,favorite:favoriteNames.some(name=>name.toLocaleLowerCase()===item.name.toLocaleLowerCase())});setCustomCategory(categories.includes(item.cat)?"":item.cat)}
   function editTemporarily(item:Item){collapseSearch();const catalogItem=catalogItems.find(candidate=>candidate.name.toLocaleLowerCase()===item.name.toLocaleLowerCase());const listed=items.find(candidate=>candidate.name.toLocaleLowerCase()===item.name.toLocaleLowerCase());const source=listed||catalogItem||item;setCatalogEdit(false);setIsNew(false);setTemporaryEdit({...(listed?{targetId:listed.id}:{}),originalName:item.name});setEditor({...source,id:listed?.id||source.id,qty:listed?.qty||source.qty||"1 Stück",favorite:false});setCustomCategory(categories.includes(source.cat)?"":source.cat)}
  function removeFavorite(name:string){setFavoriteNames(favoriteNames.filter(value=>value.toLocaleLowerCase()!==name.toLocaleLowerCase()));setCatalogItems(catalogItems.filter(item=>item.name.toLocaleLowerCase()!==name.toLocaleLowerCase()));setMessage(`${name} aus Favoriten und Produktkatalog entfernt.`)}
  function removeCatalog(id:string){const removed=catalogItems.find(x=>x.id===id);setCatalogItems(catalogItems.filter(x=>x.id!==id));if(removed)setFavoriteNames(favoriteNames.filter(name=>name.toLocaleLowerCase()!==removed.name.toLocaleLowerCase()));closeEditor();setMessage(`${removed?.name||"Produkt"} aus dem Katalog entfernt.`)}
- function removeItem(id:string){setItems(items.filter(x=>x.id!==id));setLegacyDone(legacyDone.filter(x=>x!==id));closeEditor();setMessage("Artikel aus der Liste entfernt.")}
+ function removeItem(id:string){haptic();setItems(items.filter(x=>x.id!==id));setLegacyDone(legacyDone.filter(x=>x!==id));closeEditor();setMessage("Artikel aus der Liste entfernt.")}
  if(!itemsReady||!doneReady||!catalogReady||!favoritesReady||!preferencesReady)return <div className="page-stack"><Panel><span className="loading-state">Einkaufsliste wird geladen …</span></Panel></div>;
  return <div className="page-stack bring-page">
    <Panel className={`bring-board ${(preferences.shoppingLayout??"tiles")==="list"?"shopping-layout-list":""}`}>
-    <div className="bring-board-heading"><h2>Einkaufsliste</h2><div className="shopping-mobile-tools"><button className="shopping-tool-button" onClick={()=>setCardsOpen(true)} aria-label="WG-Kundenkarten"><CreditCard size={17}/></button><button className="shopping-tool-button" aria-label="Suche" aria-expanded={searchOpen} onClick={()=>{if(searchOpen)collapseSearch();else setSearchOpen(true)}}><Search size={17}/></button>{preferences.shoppingStartEnabled&&<ShoppingStartModule items={items} setItems={setItems} layout={preferences.shoppingLayout??"tiles"}/>}</div>{searchOpen&&<div className="shopping-search-expanded"><Search size={17}/><input ref={shoppingSearchRef} value={search} onChange={event=>setSearch(event.target.value)} placeholder="Ich brauche …" onKeyDown={event=>{if(event.key==="Enter"){event.preventDefault();addSearchItem()}}}/></div>}</div>
+    <div className="bring-board-heading"><h2>Einkaufsliste</h2><div className="shopping-mobile-tools"><button className="shopping-tool-button" onClick={()=>setCardsOpen(true)} aria-label="WG-Kundenkarten" title="WG-Kundenkarten"><CreditCard size={17}/></button><Link className="shopping-tool-button" href="/prospekte" aria-label="Prospekte" title="Prospekte"><BookOpen size={17}/></Link><button className="shopping-tool-button" aria-label="Suche" aria-expanded={searchOpen} onClick={()=>{if(searchOpen)collapseSearch();else setSearchOpen(true)}}><Search size={17}/></button>{preferences.shoppingStartEnabled&&<ShoppingStartModule items={items} setItems={setItems} layout={preferences.shoppingLayout??"tiles"}/>}</div>{searchOpen&&<div className="shopping-search-expanded"><Search size={17}/><input ref={shoppingSearchRef} value={search} onChange={event=>setSearch(event.target.value)} placeholder="Ich brauche …" onKeyDown={event=>{if(event.key==="Enter"){event.preventDefault();addSearchItem()}}}/></div>}</div>
    <div className="chip-row shopping-categories"><button className={`chip ${filter==="Alle"?"chosen":""}`} onClick={()=>setFilter("Alle")}>Alle</button>{categories.map(c=><button className={`chip ${filter===c?"chosen":""}`} onClick={()=>setFilter(c)} key={c}>{c}</button>)}</div>
     <section className="bring-list-section"><div className="bring-section-heading"><b>Auf eurer Liste</b><small>{open.length}</small></div><div className="shopping-list-content">{visibleOpen.length?<div className="bring-tile-grid">{visibleOpen.map(item=><article className={`bring-tile is-listed ${priorityValues(item.priority).includes("Dringend")?"priority-urgent":""}`} key={item.id}><button className="tile-body tile-remove-on-tap" {...(!preferences.disableShoppingEditing?mobileEditPress(()=>editListItem(item)):{})} onClick={()=>removeItem(item.id)} aria-label={`${item.name} aus der Liste entfernen; länger halten zum Bearbeiten`} title="Antippen zum Entfernen · länger halten zum Bearbeiten"><span className="tile-emoji"><ProductIcon value={item.icon}/></span><b>{item.name}</b><small>{item.qty}</small></button><PriorityBadges priority={item.priority}/></article>)}</div>:<div className="shopping-empty">Liste ist leer.</div>}</div></section>
    <details className="bring-favorites" open={favoritesOpen} onToggle={event=>setFavoritesOpen(event.currentTarget.open)}>
