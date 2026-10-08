@@ -71,18 +71,19 @@ async function mealDb(url: URL, fresh = false) {
 
 export async function GET(request: NextRequest) {
   const query = (request.nextUrl.searchParams.get("q") ?? "").trim().replace(/\s+/g, " ");
+  const fresh=request.nextUrl.searchParams.get("fresh")==="1";
   const detailId=request.nextUrl.searchParams.get("id")??"";
   if(detailId.startsWith("cooklang-")){const id=Number(detailId.slice("cooklang-".length));if(!Number.isSafeInteger(id)||id<1)return NextResponse.json({error:"Rezept nicht gefunden."},{status:400});try{const response=await fetch(`https://recipes.cooklang.org/api/recipes/${id}`,{next:{revalidate:86400},signal:AbortSignal.timeout(9000),headers:{accept:"application/json"}});if(!response.ok)throw new Error(`Cooklang antwortet mit ${response.status}.`);const detail=await response.json() as CooklangDetail;return NextResponse.json({recipe:await germanize(mapCooklangDetail(detail))},{headers:{"Cache-Control":"public, max-age=3600, stale-while-revalidate=7200"}})}catch(error){const message=error instanceof Error?error.message:"Rezept konnte nicht geladen werden.";return NextResponse.json({error:message},{status:502,headers:{"Cache-Control":"no-store"}})}}
   if (query.length > 80) return NextResponse.json({ error: "Bitte kürzer suchen." }, { status: 400 });
   const key = query ? `search:${query.toLocaleLowerCase("de")}` : "discover";
   const cached = cache.get(key);
-  if (cached && cached.expires > Date.now()) return NextResponse.json({ recipes: cached.recipes, source: "TheMealDB + Cooklang Federation" }, { headers: { "Cache-Control": "public, max-age=900, stale-while-revalidate=1800" } });
+  if (!fresh&&cached && cached.expires > Date.now()) return NextResponse.json({ recipes: cached.recipes, source: "TheMealDB + Cooklang Federation" }, { headers: { "Cache-Control": "public, max-age=900, stale-while-revalidate=1800" } });
 
   try {
     let meals: Meal[] = [];
     if (query) {
       const terms=await searchTerms(query);
-      const searches=terms.map(async term=>{const url=new URL("https://www.themealdb.com/api/json/v1/1/search.php");url.searchParams.set("s",term);return mealDb(url)});
+      const searches=terms.map(async term=>{const url=new URL("https://www.themealdb.com/api/json/v1/1/search.php");url.searchParams.set("s",term);return mealDb(url,fresh)});
       // Cooklang returns 100 results per page. Search several translated and
       // original terms, and read enough pages to avoid silently stopping at 3 hits.
       const cookSearches=terms.flatMap(term=>[1,2,3,4].map(page=>cooklangSearch(term,page)));
@@ -105,15 +106,15 @@ export async function GET(request: NextRequest) {
       }).slice(0,180);
       const [complete,cookCardsToTranslate]=[relevant.filter(recipe=>recipe.provider!=="cooklang"),relevant.filter(recipe=>recipe.provider==="cooklang")];
       const recipes=[...await Promise.all(complete.map(germanize)),...await translateNames(cookCardsToTranslate)];
-      cache.set(key,{recipes,expires:Date.now()+ttl});
-      return NextResponse.json({recipes,source:"TheMealDB + Cooklang Federation"},{headers:{"Cache-Control":"public, max-age=900, stale-while-revalidate=1800"}});
+      if(!fresh)cache.set(key,{recipes,expires:Date.now()+ttl});
+      return NextResponse.json({recipes,source:"TheMealDB + Cooklang Federation"},{headers:{"Cache-Control":fresh?"no-store":"public, max-age=900, stale-while-revalidate=1800"}});
     } else {
-      const picks = await Promise.allSettled(Array.from({ length: 6 }, () => mealDb(new URL("https://www.themealdb.com/api/json/v1/1/random.php"), true)));
+      const picks = await Promise.allSettled(Array.from({ length: 15 }, () => mealDb(new URL("https://www.themealdb.com/api/json/v1/1/random.php"), true)));
       meals = picks.flatMap((pick) => pick.status === "fulfilled" ? pick.value.meals ?? [] : []);
     }
-    const recipes = await Promise.all([...new Map(meals.map(mapMeal).filter((recipe): recipe is Recipe => Boolean(recipe)).map((recipe) => [recipe.id, recipe])).values()].slice(0, 12).map(germanize));
-    cache.set(key, { recipes, expires: Date.now() + ttl });
-    return NextResponse.json({ recipes, source: "TheMealDB + Cooklang Federation" }, { headers: { "Cache-Control": "public, max-age=900, stale-while-revalidate=1800" } });
+    const recipes = await Promise.all([...new Map(meals.map(mapMeal).filter((recipe): recipe is Recipe => Boolean(recipe)).map((recipe) => [recipe.id, recipe])).values()].slice(0, query?180:9).map(germanize));
+    if(!fresh)cache.set(key, { recipes, expires: Date.now() + ttl });
+    return NextResponse.json({ recipes, source: "TheMealDB + Cooklang Federation" }, { headers: { "Cache-Control": fresh?"no-store":"public, max-age=900, stale-while-revalidate=1800" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Rezepte konnten nicht geladen werden.";
     return NextResponse.json({ error: message, recipes: [] }, { status: 502, headers: { "Cache-Control": "no-store" } });

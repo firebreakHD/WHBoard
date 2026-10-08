@@ -73,9 +73,11 @@ function readOffers(html: string): Offer[] {
   return offers;
 }
 
-export async function GET() {
+export async function GET(request:Request) {
+  const includeAll = new URL(request.url).searchParams.get("all") === "1";
+  const respond = (data: { offers: Offer[]; updatedAt: string | null; expires: number }) => NextResponse.json({ ...data, offers: includeAll ? data.offers : data.offers.slice(0, 48) }, { headers: { "Cache-Control": "public, max-age=900, stale-while-revalidate=1800" } });
   if (cached && cached.expires > Date.now()) {
-    return NextResponse.json(cached, { headers: { "Cache-Control": "public, max-age=900, stale-while-revalidate=1800" } });
+    return respond(cached);
   }
   try {
     const response = await fetch("https://sparkorb.at/angebote", {
@@ -87,8 +89,8 @@ export async function GET() {
     const offers = readOffers(html);
     if (!offers.length) throw new Error("Die Angebotsliste ist momentan nicht verfügbar.");
     const updatedAt = html.match(/Zuletzt aktualisiert:\s*([^<\n]+)/i)?.[1]?.trim() ?? null;
-    cached = { offers: offers.slice(0, 48), updatedAt, expires: Date.now() + 30 * 60_000 };
-    return NextResponse.json(cached, { headers: { "Cache-Control": "public, max-age=900, stale-while-revalidate=1800" } });
+    cached = { offers, updatedAt, expires: Date.now() + 30 * 60_000 };
+    return respond(cached);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Angebote konnten nicht geladen werden.";
     return NextResponse.json({ error: message }, { status: 502, headers: { "Cache-Control": "no-store" } });

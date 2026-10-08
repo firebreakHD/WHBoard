@@ -1,3 +1,19 @@
+## 0.1.97
+
+- Zeigt bei Wochenangeboten den aktuellen Listenbestand und erlaubt weiteres Hinzufügen; entfernt Favoriten und den Günstigsten-Hinweis aus dem Angebotsraster.
+- Ergänzt Mengensteuerung, Speichern und Marktauswahl in der allgemeinen Produktsuche sowie Marktkennzeichnung bei Angebotsartikeln auf der Einkaufsliste.
+- Ergänzt Händlerlinks für Nah&Frisch, BIPA, dm, LIBRO und PAGRO sowie die Bezeichnung „Angebote und Prospekte“ und richtet die mobile Aktionsleiste neu aus.
+- Ersetzt „Beliebt“ durch saisonale Rezeptvorschläge, lädt neun Entdecken-Vorschläge und macht die Zubereitungsansicht sichtbar bedienbar.
+- Entfernt das Angebots-Badge automatisch nur bei markierten Artikeln, die tatsächlich aus dem Angebotsraster übernommen wurden.
+## 0.1.96
+
+- Entfernt veraltete Angebots-Badges auch bei manuell markierten Artikeln, wenn kein passendes aktives Angebot mehr im Feed steht.
+
+## 0.1.95
+
+- Entfernt das Angebots-Badge und gespeicherte Angebotsdaten automatisch, sobald ein verknüpftes Angebot abgelaufen oder aus dem aktuellen Angebotsfeed verschwunden ist.
+- Prüft Angebotsartikel beim Öffnen der Einkaufsliste, bei der Rückkehr zur App und während der Nutzung erneut.
+
 ## 0.1.93
 
 - Ergänzt eine allgemeine Produktsuche mit normalen Onlinepreisen mehrerer Händler; das Suchfeld öffnet unter der Überschrift.
@@ -273,6 +289,7 @@
 - Behebt die mobile Start-Navigation unter Home Assistant Ingress: „Start“ öffnet wieder das WG-Dashboard.
 - Zeigt den Einstellungszugang dauerhaft in der oberen Leiste.
 - Macht das Formular zum Anlegen weiterer WG-Kundenkarten nach der ersten Karte einklappbar.
+
 
 
 
