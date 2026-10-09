@@ -7,7 +7,7 @@ const target = process.env.NEXT_INTERNAL_ORIGIN || "http://127.0.0.1:3000";
 const targetUrl = new URL(target);
 const port = Number(process.env.HA_INGRESS_PORT || 8099);
 const ingressProxyAddress = "172.30.32.2";
-const routeNames = "api|_next|manifest\\.webmanifest|service-worker\\.js|icon\\.svg|finanzen|einkauf|berichte|einstellungen|prospekte|admin|docker|server|logs|home-assistant|netzwerk|nas";
+const routeNames = "api|_next|manifest\\.webmanifest|service-worker\\.js|icon\\.svg|finanzen|kostenrechnung|einkauf|berichte|einstellungen|prospekte|admin|docker|server|logs|home-assistant|netzwerk|nas";
 const backend = spawn(process.execPath, ["server.js"], {
   cwd: "/app",
   env: { ...process.env, HOSTNAME: targetUrl.hostname, PORT: targetUrl.port || "3000" },

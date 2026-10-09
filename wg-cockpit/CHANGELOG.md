@@ -1,3 +1,7 @@
+## 0.1.112
+
+- Korrigiert den Kostenrechnung-Menülink innerhalb von Home Assistant, damit die Seite über den Ingress-Pfad statt mit einem 404 geöffnet wird.
+
 ## 0.1.111
 
 - Ergänzt die persönliche Kostenrechnung mit PIN, PDF-Kontoauszug-Import und editierbaren Monatsbuchungen.
