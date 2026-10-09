@@ -1,3 +1,9 @@
+## 0.1.113
+
+- Öffnet die Kostenrechnung wie bestehende Dashboard-Aktionen direkt innerhalb des aktuellen Home-Assistant-Ingress-Pfads.
+- Ergänzt einen erreichbaren Kostenrechnung-Button am Handy mit den vorhandenen Farben, Abständen und Touch-Größen.
+- Führt beim Abbrechen des PIN-Fensters innerhalb von Home Assistant zurück zum Dashboard.
+
 ## 0.1.112
 
 - Korrigiert den Kostenrechnung-Menülink innerhalb von Home Assistant, damit die Seite über den Ingress-Pfad statt mit einem 404 geöffnet wird.

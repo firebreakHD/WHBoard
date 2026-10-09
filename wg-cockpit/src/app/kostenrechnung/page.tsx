@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { Download, FileUp, LockKeyhole, Plus, Save, Trash2, X } from "lucide-react";
 import { PageHeading, Panel, SectionTitle } from "@/components/ui";
 import { costSummary, sumCosts, refundFor, sumRefunds, newCostId, isSavingRow, type CostPlan, type CostRow } from "@/domain/cost-plan";
@@ -15,7 +14,10 @@ export default function Kostenrechnung() {
  const [tab,setTab]=useState<"Monat"|"Fixkosten"|"Abschluss">("Monat"),[month,setMonth]=useState("2026-09");
  const [showImport,setShowImport]=useState(false),[imported,setImported]=useState("");
  const [includeSavings,setIncludeSavings]=useState(true);
+ const [ingressBase,setIngressBase]=useState("");
  const dialog=useRef<HTMLDialogElement>(null);
+ useEffect(()=>{setIngressBase(window.location.pathname.match(/^(\/api\/hassio_ingress\/[A-Za-z0-9_-]+)/)?.[1]||"")},[]);
+ function goHome(event?:React.MouseEvent<HTMLAnchorElement>){event?.preventDefault();const base=window.location.pathname.match(/^(\/api\/hassio_ingress\/[A-Za-z0-9_-]+)/)?.[1]||"";window.location.assign(`${base}/`)}
  useEffect(()=>{if(!token)dialog.current?.showModal();else dialog.current?.close()},[token]);
  useEffect(()=>{if(!dirty)return;const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue=""};window.addEventListener("beforeunload",warn);return()=>window.removeEventListener("beforeunload",warn)},[dirty]);
  async function load(access:string) {
@@ -59,8 +61,8 @@ export default function Kostenrechnung() {
  const actual=Boolean(plan?.actualMonths?.includes(month));
  return <div className="cost-page"><PageHeading eyebrow="PERSÖNLICH" title="Kostenrechnung" subtitle="Deine Kosten, einfach im Blick." action={token&&<div className="cost-actions"><button className="button" disabled={busy} onClick={()=>setShowImport(true)}><FileUp size={15}/>PDF importieren</button><button className="button" disabled={busy} onClick={exportCsv}><Download size={15}/>Excel-Export (CSV)</button><button className="button primary" disabled={busy||!dirty} onClick={save}><Save size={15}/>{busy?"Speichert …":"Speichern"}</button><button className="button" disabled={busy} onClick={()=>{if(dirty&&!window.confirm("Ungespeicherte Änderungen verwerfen und sperren?"))return;void fetch(api+"/session",{method:"DELETE",headers:{Authorization:"Bearer "+token}});setToken("");setPlan(null);setDirty(false);setError("");setSaved("");setImported("")}}><LockKeyhole size={15}/>Sperren</button></div>}/>
   {!token&&<Panel className="cost-locked"><LockKeyhole size={28}/><h2>Geschützter Bereich</h2><p>Zum Öffnen bitte deinen PIN eingeben.</p></Panel>}
-  <dialog ref={dialog} className="cost-pin-dialog" aria-labelledby="cost-pin-title" onCancel={event=>{event.preventDefault();const ingress=window.location.pathname.match(/^(\/api\/hassio_ingress\/[A-Za-z0-9_-]+)/);window.location.assign(ingress?ingress[1]+"/":"/");}}>
-   <form onSubmit={unlock}><div className="cost-pin-head"><LockKeyhole size={24}/><Link href="/" aria-label="Zurück zum Dashboard"><X size={20}/></Link></div><h2 id="cost-pin-title">Kostenrechnung entsperren</h2><p>Gib deinen vierstelligen PIN ein.</p><label htmlFor="cost-pin">PIN</label><input id="cost-pin" autoFocus type="password" inputMode="numeric" autoComplete="off" pattern="[0-9]{4}" maxLength={4} value={pin} onChange={event=>setPin(event.target.value.replace(/\D/g,""))} required disabled={busy}/>{error&&<p className="cost-error" role="alert">{error}</p>}<button className="button primary" disabled={busy||pin.length!==4}>{busy?"Öffnet …":"Entsperren"}</button><Link className="cost-cancel" href="/">Abbrechen</Link></form>
+  <dialog ref={dialog} className="cost-pin-dialog" aria-labelledby="cost-pin-title" onCancel={event=>{event.preventDefault();goHome()}}>
+   <form onSubmit={unlock}><div className="cost-pin-head"><LockKeyhole size={24}/><a href={`${ingressBase}/`} onClick={goHome} aria-label="Zurück zum Dashboard"><X size={20}/></a></div><h2 id="cost-pin-title">Kostenrechnung entsperren</h2><p>Gib deinen vierstelligen PIN ein.</p><label htmlFor="cost-pin">PIN</label><input id="cost-pin" autoFocus type="password" inputMode="numeric" autoComplete="off" pattern="[0-9]{4}" maxLength={4} value={pin} onChange={event=>setPin(event.target.value.replace(/\D/g,""))} required disabled={busy}/>{error&&<p className="cost-error" role="alert">{error}</p>}<button className="button primary" disabled={busy||pin.length!==4}>{busy?"Öffnet …":"Entsperren"}</button><a className="cost-cancel" href={`${ingressBase}/`} onClick={goHome}>Abbrechen</a></form>
   </dialog>
   {token&&plan&&summary&&<><div className="cost-status" role="status"><b>{dirty?"Ungespeicherte Änderungen":saved||"Geladen"}</b><span>{actual?"PDF-Buchungen für diesen Monat":"Plan aus deiner Excel-Datei"}</span></div>{imported&&<p className="cost-note" role="status">{imported}</p>}{error&&<div className="cost-error" role="alert">{error}<button className="button" disabled={busy} onClick={async()=>{if(dirty&&!window.confirm("Änderungen verwerfen und gespeicherten Stand laden?"))return;setBusy(true);try{await load(token);setError("")}catch(err){setError(err instanceof Error?err.message:"Laden fehlgeschlagen.")}finally{setBusy(false)}}}>Gespeicherten Stand laden</button></div>}
    <div className="cost-tabs" role="tablist" aria-label="Kostenbereiche">{(["Monat","Fixkosten","Abschluss"] as const).map(value=><button key={value} role="tab" aria-selected={tab===value} onClick={()=>setTab(value)}>{value==="Monat"?"Monatsausgaben":value==="Fixkosten"?"Fixkosten & Gehalt":"Abschlussrechnung"}</button>)}</div>
