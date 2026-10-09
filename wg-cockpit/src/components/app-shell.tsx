@@ -1,7 +1,7 @@
 "use client";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Bell, ChartNoAxesCombined, ChevronDown, Home, Menu, Settings, ShoppingBasket, Wallet, X } from "lucide-react";
+import { Bell, ChartNoAxesCombined, ChevronDown, Home, Menu, Table2, Settings, ShoppingBasket, Wallet, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { PwaRegistration } from "@/components/pwa-registration";
 import {useHouseholdState} from "@/lib/use-household-state";
@@ -10,7 +10,7 @@ import {parseMoneyAmount} from "@/lib/money";
 
 const nav=[
   {title:"ÜBERSICHT",items:[{label:"Dashboard",href:"/",icon:Home}]},
-  {title:"WOHNUNG",items:[{label:"Haushaltskonto",href:"/finanzen",icon:Wallet},{label:"Einkaufsliste",href:"/einkauf",icon:ShoppingBasket}]},
+  {title:"WOHNUNG",items:[{label:"Haushaltskonto",href:"/finanzen",icon:Wallet},{label:"Einkaufsliste",href:"/einkauf",icon:ShoppingBasket},{label:"Kostenrechnung",href:"/kostenrechnung",icon:Table2}]},
   {title:"MARKT",items:[{label:"Marktanalyse",href:"/berichte",icon:ChartNoAxesCombined}]},
 ];
 export function AppShell({children}:{children:React.ReactNode}){
@@ -28,6 +28,6 @@ export function AppShell({children}:{children:React.ReactNode}){
     </aside>
     {open&&<button className="sidebar-scrim" aria-label="Menü schließen" onClick={()=>setOpen(false)}/>}
     <main className="main-area"><header className="topbar"><button className="mobile-menu" aria-label="Menü öffnen" onClick={()=>setOpen(true)}><Menu size={20}/></button><div className="crumb"><span>WG Cockpit</span><span>/</span><b>{isDashboard?"Dashboard":path.split("/")[1]?.replace("-"," ")}</b></div><div className="topbar-actions"><div id="shopping-status-slot" className="shopping-status-slot"/><span className="today-label">{today}</span><Link className={`top-settings-button ${isDashboard?"dashboard-settings-button":""}`} href="/einstellungen" aria-label="Einstellungen"><Settings size={17}/></Link><div className="notification-wrap"><button className="icon-button" aria-label="Benachrichtigungen" aria-expanded={showNotifications} onClick={()=>{setShowNotifications(v=>!v);void refreshNotifications()}}><Bell size={17}/>{notifications.length>0&&<i/>}</button>{showNotifications&&<div className="notification-popover" role="dialog" aria-label="Benachrichtigungen"><div className="notification-head"><b>Benachrichtigungen</b><button onClick={()=>setShowNotifications(false)} aria-label="Schließen">×</button></div>{notifications.length?notifications.map((n,i)=><Link onClick={()=>setShowNotifications(false)} href={n.href} className="notification-item" key={i}><b>{n.title}</b><small>{n.detail}</small><span>Öffnen →</span></Link>):<div className="notification-empty"><b>Alles erledigt</b><small>Keine aktiven Hinweise. Einstellungen der Glocke kannst du anpassen.</small><Link href="/einstellungen" onClick={()=>setShowNotifications(false)}>Einstellungen öffnen</Link></div>}</div>}</div><div className="top-avatar">M</div></div></header><div className="page-container">{children}</div><footer className="app-footer"><span>WG Cockpit</span><span>Einfach zusammen wohnen.</span></footer></main>
-    <nav className="mobile-bottom-nav" aria-label="Hauptnavigation">{nav.flatMap(group=>group.items).map(item=>{const active=path===item.href;const Icon=item.icon;const label=item.href==="/finanzen"?"Konto":item.href==="/einkauf"?"Einkauf":item.href==="/berichte"?"Markt":"Start";return item.href==="/"?<a href={dashboardHref()} className={`mobile-bottom-item ${active?"active":""}`} onClick={openDashboard} key={item.href}><Icon size={19}/><span>{label}</span></a>:<Link href={item.href} className={`mobile-bottom-item ${active?"active":""}`} onClick={()=>{setOpen(false);if(item.href==="/einkauf"&&path==="/einkauf")window.dispatchEvent(new Event("wg-shopping-home"))}} key={item.href}><Icon size={19}/><span>{label}</span></Link>})}</nav>
+    <nav className="mobile-bottom-nav" aria-label="Hauptnavigation">{nav.flatMap(group=>group.items).filter(item=>item.href!=="/kostenrechnung").map(item=>{const active=path===item.href;const Icon=item.icon;const label=item.href==="/finanzen"?"Konto":item.href==="/einkauf"?"Einkauf":item.href==="/berichte"?"Markt":"Start";return item.href==="/"?<a href={dashboardHref()} className={`mobile-bottom-item ${active?"active":""}`} onClick={openDashboard} key={item.href}><Icon size={19}/><span>{label}</span></a>:<Link href={item.href} className={`mobile-bottom-item ${active?"active":""}`} onClick={()=>{setOpen(false);if(item.href==="/einkauf"&&path==="/einkauf")window.dispatchEvent(new Event("wg-shopping-home"))}} key={item.href}><Icon size={19}/><span>{label}</span></Link>})}</nav>
   </div>
 }
