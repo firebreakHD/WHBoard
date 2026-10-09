@@ -1,3 +1,10 @@
+## 0.1.111
+
+- Ergänzt die persönliche Kostenrechnung mit PIN, PDF-Kontoauszug-Import und editierbaren Monatsbuchungen.
+- Aktualisiert Summen beim Löschen sofort und trennt Sparbeträge von anderen Kosten.
+- Erhöht beim lokalen Produktionsbuild die Add-on-Version und die angezeigte App-Version zusammen. Fehlgeschlagene Builds setzen die Version zurück.
+- Behält beim Home-Assistant-Containerbuild die bereits veröffentlichte Version bei.
+
 ## 0.1.110
 
 - Lädt die ausführlichen Rezeptdetails erst beim Öffnen. Dadurch werden Zutaten und sämtliche Schritte dann vollständig ins Deutsche übertragen, ohne die gesamte Suche auszubremsen.

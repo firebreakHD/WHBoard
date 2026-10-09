@@ -20,11 +20,12 @@ und `admin-cockpit/`) im Stammverzeichnis des Repositorys liegen. Home Assistant
 liest Add-on-Repositories ab der Repository-Wurzel, nicht aus einem Unterordner wie
 `HA_Build/`.
 
-Nach einem Codewechsel `HA_Addon/build.ps1` im Projektstamm ausführen. Das Skript baut
-beide Oberflächen, erhöht die Patch-Versionen, exportiert nach `HA_Build/` und
-aktualisiert automatisch die Dateien und Add-on-Ordner im GitHub-Repository-Ordner
-`C:\Users\mt\Documents\GitHub\WHBoard` (der `.git`-Ordner bleibt erhalten). Danach
-den Stand dort mit der Git-Software committen/pushen.
+Die WG-App wird direkt in `D:\11 GITHUB REP -----\WHBoard\wg-cockpit` bearbeitet.
+Nach einem Codewechsel im Repository `npm --prefix wg-cockpit run build` ausführen.
+Der Build erhöht die Patch-Version in `config.yaml` und die angezeigte App-Version
+automatisch zusammen. Bei einem fehlgeschlagenen Build bleibt die bisherige Version
+erhalten. Danach die Änderungen inklusive der Versionsdateien mit der Git-Software
+committen und pushen. Home Assistant erhält erst den veröffentlichten Stand.
 
 In Home Assistant unter **Einstellungen → Apps → ⋮ → Repositories** das Repository
 aktualisieren. Danach erscheint bei installierten Apps mit neuer Versionsnummer
