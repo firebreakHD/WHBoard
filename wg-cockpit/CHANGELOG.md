@@ -1,3 +1,13 @@
+## 0.1.120
+
+- Ergänzt Desserts & Kuchen mit neun süßen Rezepten und Aktualisieren durch Herunterziehen; hält Entdecken frei von Desserts, während Saison sie weiter enthalten darf.
+
+- Ergänzt Emmi kocht einfach und Einfach Kochen als weitere Quellen für deutsche Rezepte mit Fotos.
+- Bevorzugt beim Aktualisieren Rezepte, die in den letzten Auswahlen des geöffneten Bereichs nicht angezeigt wurden; erkennt gleiche Rezeptnamen auch zwischen Quellen.
+- Übersetzt erkannte englische Textbestandteile auch aus deutschsprachigen Quellen und zeigt weiterhin keine Rezepte ohne Bild oder mit Fisch/Meeresfrüchten an.
+- Speichert Rezeptbibliothek, Favoriten und übernommene Rezepte dauerhaft; repariert dafür die fehlenden Rezept-Datensätze in der Speicher-API.
+- Belässt übernommene Rezepte unabhängig von der Einkaufsliste in ihrem Bereich und entfernt sie dort erst über Erledigt.
+
 ## 0.1.119
 
 - Ergänzt GuteKueche Österreich, GuteKueche Deutschland und LECKER mit deutschen Rezepten und echten Rezeptbildern; mischt die Quellen für Vorschläge.

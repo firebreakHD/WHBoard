@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { isKnownGermanRecipeIngredient, localizeRecipeAmount, localizeRecipeIngredient, localizeRecipeIngredientMentions } from "@/lib/recipe-localization";
 
 import {containsSeafood, hasEnglishRecipeWords, RECIPE_POLICY_VERSION} from "@/lib/recipe-policy";
+import {recipeCourse} from "@/lib/recipe-course";
+import {chooseRecipeSuggestions,recipeSelectionKey} from "@/lib/recipe-selection";
 import {germanRecipeSuggestions,germanRecipeDetail} from "@/lib/german-recipes";
 import {getRecipeTranslationIssue,translateRecipeText} from "@/lib/recipe-translation";
 
@@ -10,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 type Meal = Record<string, string | null> & { idMeal?: string; strMeal?: string; strMealThumb?: string; strCategory?: string; strArea?: string; strInstructions?: string; strSource?: string; strYoutube?: string };
 type RecipeIngredient = { name: string; amount: string; hint?: string };
-type Recipe = { id: string; name: string; image: string; category: string; area: string; description?:string; instructions: string[]; source: string; ingredients: RecipeIngredient[]; portions?: number; ingredientCount?:number; detailsLoaded?:boolean; provider?:"cooklang"|"mealdb"|"web"; locale?:string; policyVersion?:number };
+type Recipe = { id: string; name: string; image: string; category: string; area: string; description?:string; instructions: string[]; source: string; ingredients: RecipeIngredient[]; portions?: number; ingredientCount?:number; detailsLoaded?:boolean; provider?:"cooklang"|"mealdb"|"web"; locale?:string; course?:"main"|"dessert"; policyVersion?:number };
 type CacheEntry = { expires: number; recipes: Recipe[] };
 type CooklangSearchItem = { id:number;title:string;summary?:string|null;tags?:string[];locale?:string;image_url?:string|null;source_url?:string|null;feed?:{title?:string} };
 type CooklangDetail = CooklangSearchItem & { content?:string; ingredients?:{name:string;quantity?:number|null;unit?:string|null}[]; servings?:number|null; total_time_minutes?:number|null };
@@ -91,20 +93,20 @@ async function cooklangDetail(id:number){
   return mapCooklangDetail(await response.json() as CooklangDetail);
 }
 
-async function safeCards(candidates:Recipe[],limit=180){
+async function safeCards(candidates:Recipe[],limit=180,excluded:ReadonlySet<string>=new Set(),course:"all"|"main"|"dessert"="all"){
   // Inspect complete ingredients, but only translate enough valid suggestions.
-  const eligible=candidates.filter(recipe=>recipe.image&&!containsSeafood(recipe)).slice(0,180);
-  const recipes:Recipe[]=[];
+  const eligible=candidates.filter(recipe=>recipe.image&&!containsSeafood(recipe)&&(course==="all"||recipeCourse(recipe)===course)).slice(0,180);
+  const recipes:Recipe[]=[];const previous:Recipe[]=[];
   for(let offset=0;offset<eligible.length&&recipes.length<limit;){
     const batch=eligible.slice(offset,offset+Math.min(9,limit-recipes.length));offset+=batch.length;
     const results=await Promise.allSettled(batch.map(async recipe=>{
       const checked=recipe.provider==="cooklang"?await cooklangDetail(Number(recipe.id.slice(9))):recipe;
       if(!checked.ingredients.length||containsSeafood(checked))return null;
-      return germanize(checked,false);
+      const translated=await germanize(checked,false);return course!=="all"&&recipeCourse(translated)!==course?null:translated;
     }));
-    recipes.push(...results.flatMap(result=>result.status==="fulfilled"&&result.value?[result.value]:[]));
+    for(const result of results){if(result.status!=="fulfilled"||!result.value)continue;if(excluded.has(recipeSelectionKey(result.value)))previous.push(result.value);else recipes.push(result.value)}
   }
-  return recipes.slice(0,limit);
+  return chooseRecipeSuggestions([...recipes,...previous],limit,excluded);
 }
 
 function shuffled<T>(values:T[]){const result=[...values];for(let i=result.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[result[i],result[j]]=[result[j],result[i]]}return result}
@@ -116,6 +118,9 @@ async function mealDb(url: URL, fresh = false) {
 }
 
 export async function GET(request: NextRequest) {
+  const requestedCourse=request.nextUrl.searchParams.get("kind");
+  const course=requestedCourse==="main"||requestedCourse==="dessert"?requestedCourse:"all";
+  const excluded=new Set((request.nextUrl.searchParams.get("exclude")??"").split(",").filter(value=>/^[a-f0-9]{8}$/.test(value)).slice(0,36));
   const query = (request.nextUrl.searchParams.get("q") ?? "").trim().replace(/\s+/g, " ");
   const requestedLimit=Number(request.nextUrl.searchParams.get("limit")??180);
   const limit=Number.isInteger(requestedLimit)&&requestedLimit>0?Math.min(180,requestedLimit):9;
@@ -128,13 +133,13 @@ export async function GET(request: NextRequest) {
   if(detailId.startsWith("mealdb-")){const id=detailId.slice("mealdb-".length);if(!/^\d+$/.test(id))return NextResponse.json({error:"Rezept nicht gefunden."},{status:400});try{const url=new URL("https://www.themealdb.com/api/json/v1/1/lookup.php");url.searchParams.set("i",id);const data=await mealDb(url);const recipe=mapMeal(data.meals?.[0]);if(!recipe)throw new Error("Rezeptdetails konnten nicht geladen werden.");return NextResponse.json({recipe:await germanize(recipe)},{headers:{"Cache-Control":"no-store"}})}catch(error){const message=error instanceof Error?error.message:"Rezept konnte nicht geladen werden.";return NextResponse.json({error:message},{status:502,headers:{"Cache-Control":"no-store"}})}}
   if(detailId.startsWith("cooklang-")){const id=Number(detailId.slice("cooklang-".length));if(!Number.isSafeInteger(id)||id<1)return NextResponse.json({error:"Rezept nicht gefunden."},{status:400});try{return NextResponse.json({recipe:await germanize(await cooklangDetail(id))},{headers:{"Cache-Control":"no-store"}})}catch(error){const message=error instanceof Error?error.message:"Rezept konnte nicht geladen werden.";return NextResponse.json({error:message},{status:502,headers:{"Cache-Control":"no-store"}})}}
   if (query.length > 80) return NextResponse.json({ error: "Bitte kürzer suchen." }, { status: 400 });
-  const key = `${query?`search:${query.toLocaleLowerCase("de")}`:"discover"}:${limit}:${shuffle}`;
+  const key = `${query?`search:${query.toLocaleLowerCase("de")}`:"discover"}:${limit}:${shuffle}:${course}:${[...excluded].sort().join(",")}`;
   const cached = cache.get(key);
-  if (!fresh&&cached && cached.expires > Date.now()) return NextResponse.json({ recipes: cached.recipes, source: "GuteKueche Österreich + GuteKueche Deutschland + LECKER + TheMealDB + Cooklang" }, { headers: { "Cache-Control": "no-store" } });
+  if (!fresh&&cached && cached.expires > Date.now()) return NextResponse.json({ recipes: cached.recipes, source: "GuteKueche Österreich + GuteKueche Deutschland + LECKER + Emmi kocht einfach + Einfach Kochen + TheMealDB + Cooklang" }, { headers: { "Cache-Control": "no-store" } });
 
   try {
-    const native=await germanRecipeSuggestions(query,fresh,Math.min(9,limit));
-    const sources="GuteKueche Österreich + GuteKueche Deutschland + LECKER + TheMealDB + Cooklang";
+    const native=await germanRecipeSuggestions(query,fresh,Math.min(9,limit),excluded,course);
+    const sources="GuteKueche Österreich + GuteKueche Deutschland + LECKER + Emmi kocht einfach + Einfach Kochen + TheMealDB + Cooklang";
     if(native.length>=Math.min(9,limit)&&limit<=9){if(!fresh)cache.set(key,{recipes:native,expires:Date.now()+ttl});return NextResponse.json({recipes:native,source:sources},{headers:{"Cache-Control":"no-store"}})}
     let meals: Meal[] = [];
     if (query) {
@@ -160,7 +165,7 @@ export async function GET(request: NextRequest) {
         const score=(recipe:Recipe)=>{const title=normalizeQuery(recipe.name);if(title===normalizedQuery)return 0;if(title.startsWith(`${normalizedQuery} `)||title.includes(` ${normalizedQuery} `))return 1;const matched=searchWords.filter(word=>title.includes(word)).length;return 10-matched};
         return score(a)-score(b)||a.name.localeCompare(b.name,"de");
       }).slice(0,180);
-      const recipes=[...native,...await safeCards(shuffle?shuffled(relevant):relevant,Math.max(1,limit-native.length))].slice(0,limit);
+      const recipes=[...native,...await safeCards(shuffle?shuffled(relevant):relevant,Math.max(1,limit-native.length),excluded,course)].slice(0,limit);
       if(!fresh)cache.set(key,{recipes,expires:Date.now()+ttl});
       return NextResponse.json({recipes,source:sources,warning:recipes.length<Math.min(9,limit)?getRecipeTranslationIssue():undefined},{headers:{"Cache-Control":fresh?"no-store":"no-store"}});
     } else {
@@ -170,7 +175,7 @@ export async function GET(request: NextRequest) {
         const picks=await Promise.allSettled(Array.from({length:15},()=>mealDb(new URL("https://www.themealdb.com/api/json/v1/1/random.php"),true)));
         meals=picks.flatMap(pick=>pick.status==="fulfilled"?pick.value.meals??[]:[]);
         const candidates=meals.map(mapMeal).filter((recipe):recipe is Recipe=>Boolean(recipe)).filter(recipe=>{if(seen.has(recipe.id))return false;seen.add(recipe.id);return true});
-        recipes.push(...await safeCards(candidates,target-recipes.length));
+        recipes.push(...await safeCards(candidates,target-recipes.length,excluded,course));
         if(getRecipeTranslationIssue())break;
       }
       if(!fresh)cache.set(key,{recipes,expires:Date.now()+ttl});

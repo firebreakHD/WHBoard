@@ -14,3 +14,7 @@ test("native suggestions reject seafood, untranslated English and missing photos
 test("culinary English and template links are localized without a translation quota",()=>{
  const result=parseGermanRecipe(html({...recipe,name:"High Protein Bowl mit Dip",recipeInstructions:['{{ link("ATT", 123, "Karotten") }} im Airfryer garen.']}),source);assert.ok(result);assert.equal(result.name,"eiweißreich Schüsselgericht mit Sauce");assert.deepEqual(result.instructions,["Karotten im Heißluftfritteuse garen."]);
 });
+test("new sources support array text steps and nested image objects",()=>{
+ const result=parseGermanRecipe(html({...recipe,image:[{"@type":"ImageObject",url:"https://images.example/cake.jpg"}],recipeInstructions:[{text:["Das Gemüse schneiden,","danach kochen."]}]}),"https://www.einfachkochen.de/rezepte/suppe");assert.ok(result);assert.equal(result.area,"Einfach Kochen");assert.deepEqual(result.instructions,["Das Gemüse schneiden, danach kochen."]);
+ const emmi=parseGermanRecipe(html(recipe),"https://emmikochteinfach.de/suppe/");assert.equal(emmi?.area,"Emmi kocht einfach");
+});
