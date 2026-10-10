@@ -8,7 +8,7 @@ const eur=(value:number)=>new Intl.NumberFormat("de-AT",{style:"currency",curren
 export function StatementImport({plan,token,onClose,onImport}:{plan:CostPlan;token:string;onClose:()=>void;onImport:(plan:CostPlan,month:string,count:number)=>void}){
  const dialog=useRef<HTMLDialogElement>(null);
  const [statement,setStatement]=useState<CostStatement|null>(null),[rows,setRows]=useState<StatementRow[]>([]),[filename,setFilename]=useState("");
- const [busy,setBusy]=useState(false),[error,setError]=useState(""),[replaceManual,setReplaceManual]=useState(false),[updateFixed,setUpdateFixed]=useState(false),[acknowledged,setAcknowledged]=useState(false);
+ const [busy,setBusy]=useState(false),[error,setError]=useState(""),[replaceManual,setReplaceManual]=useState(false),[updateFixed,setUpdateFixed]=useState(false),[applyCurrent,setApplyCurrent]=useState(false),[acknowledged,setAcknowledged]=useState(false);
  useEffect(()=>{dialog.current?.showModal()},[]);
  async function selectFile(file?:File){
   if(!file)return;setBusy(true);setError("");setFilename(file.name);setStatement(null);setRows([]);setAcknowledged(false);
@@ -21,11 +21,12 @@ export function StatementImport({plan,token,onClose,onImport}:{plan:CostPlan;tok
  const total=(kind:"in"|"out")=>selected.filter(row=>row.kind===kind).reduce((sum,row)=>sum+row.amount,0);
  const months=new Set(selected.map(row=>row.date.slice(0,7)));
  const manualCount=plan.expenses.filter(row=>months.has(row.month)&&!row.sourceFingerprint).length;
- function accept(){try{const result=applyCostStatement(plan,rows,filename,{replaceManual,updateFixed});onImport(result.plan,selected[0]?.date.slice(0,7)||"",result.count)}catch(err){setError(err instanceof Error?err.message:"Bitte die ausgewählten Buchungen prüfen.")}}
+ function accept(){try{const result=applyCostStatement(plan,rows,filename,{replaceManual,updateFixed,applyCurrent});onImport(result.plan,selected[0]?.date.slice(0,7)||"",result.count)}catch(err){setError(err instanceof Error?err.message:"Bitte die ausgewählten Buchungen prüfen.")}}
  return <dialog ref={dialog} className="cost-import-dialog" aria-labelledby="cost-import-title" onCancel={event=>{event.preventDefault();if(!busy)onClose()}}><header><div><small>KONTOAUSZUG</small><h2 id="cost-import-title">PDF importieren</h2></div><button className="cost-delete" aria-label="Import schließen" onClick={onClose} disabled={busy}><X size={18}/></button></header>
   <p className="cost-note">PDF auswählen, Buchungen prüfen und übernehmen. Du kannst Bezeichnungen und Zuordnung anpassen.</p>
   <label className="cost-pdf-file"><FileUp size={22}/><span>{busy?"Kontoauszug wird gelesen …":filename||"Sparkassen-Kontoauszug auswählen"}<small>PDF mit auswählbarem Text · maximal 20 MB</small></span><input aria-label="PDF-Kontoauszug" type="file" accept="application/pdf,.pdf" disabled={busy} onChange={event=>{void selectFile(event.target.files?.[0]);event.target.value=""}}/></label>
   <label className="cost-replace"><input type="checkbox" checked={updateFixed} disabled={busy} onChange={event=>{const enabled=event.target.checked;setUpdateFixed(enabled);if(statement)setRows(prepareCostStatement(rows,plan,enabled))}}/><span>Fixkosten aktualisieren<small>{updateFixed?"Änderungen unten prüfen: Fixkosten werden ergänzt, angepasst oder entfernt. Gehalt bleibt unverändert.":"Standard: Gehalt und Fixkosten bleiben unverändert. Passende Buchungen werden nicht doppelt importiert."}</small></span></label>
+  {updateFixed&&<label className="cost-replace"><input type="checkbox" checked={applyCurrent} disabled={busy} onChange={event=>setApplyCurrent(event.target.checked)}/><span>Bei jetzigem Monat übernehmen<small>Ohne Haken gelten die Fixkosten-Änderungen ab dem nächsten Monat. Frühere Monate bleiben unverändert.</small></span></label>}
   {updateFixed&&months.size>1&&<p className="cost-error" role="alert">Fixkosten bitte mit einem Auszug für einen einzelnen Monat aktualisieren.</p>}
   {updateFixed&&statement&&<div className="cost-fixed-preview"><b>Änderungen an deinen Fixkosten</b>{changes.length?changes.map((change,index)=><p key={index}><strong>{change.action==="add"?"Neu":change.action==="remove"?"Entfernen":"Aktualisieren"}: {change.name}</strong> · {change.previous!==undefined&&eur(change.previous)+" → "}{eur(change.amount)}</p>):<p>Keine Änderungen.</p>}<small>Entfernen bedeutet: Dieser Fixposten fehlt unter den ausgewählten Fixkosten des Auszugs. Prüfe die Vorschau vor dem Übernehmen.</small></div>}
   {error&&<p className="cost-error" role="alert">{error}</p>}

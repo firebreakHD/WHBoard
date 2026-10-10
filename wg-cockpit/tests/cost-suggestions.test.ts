@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { costSuggestions } from "../src/domain/cost-suggestions.ts";
-import { initialCostPlan } from "../src/lib/cost-plan-seed.ts";
+import { initialCostPlan } from "./fixtures/cost-plan.ts";
 test("suggestions use the selected month and exclude savings and income",()=>{
  const plan=structuredClone(initialCostPlan);
  plan.expenses.push({id:"credit",name:"Steam",amount:999,kind:"in",refund:0,note:"",month:"2026-09"});

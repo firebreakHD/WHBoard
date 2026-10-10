@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {costSummary,isCostPlan,isSavingRow} from "../src/domain/cost-plan.ts";
-import {initialCostPlan} from "../src/lib/cost-plan-seed.ts";
+import {costSummary,isCostPlan,isSavingRow,roundMoney} from "../src/domain/cost-plan.ts";
+import {initialCostPlan} from "./fixtures/cost-plan.ts";
 test("Excel controls reconcile and refunds remain separate",()=>{
  const result=costSummary(initialCostPlan,"2026-09");
  assert.equal(result.fixed,1637.47);assert.equal(result.available,689.73);assert.equal(result.expenses,530.17);assert.equal(result.remaining,159.56);assert.equal(result.refunds,286.65);assert.equal(result.closingExpenses,1639.73);assert.equal(result.closingRemaining,824.08);assert.equal(result.afterAdjustments,74.08);
@@ -24,3 +24,14 @@ test("savings are separated from spending and can be excluded without changing s
 test("deleting all displayed month rows produces zero totals immediately",()=>{const plan=structuredClone(initialCostPlan);plan.income=[];plan.fixed=[];plan.expenses=[];const result=costSummary(plan,"2026-09");assert.equal(result.remaining,0);assert.equal(result.totalOut,0);assert.equal(result.savings,0);});
 
 test("monthly credits count as income, not spending or savings",()=>{const plan=structuredClone(initialCostPlan);plan.expenses.push({id:"credit",name:"Erstattung",amount:50,refund:0,note:"",month:"2026-09",kind:"in",isSaving:true});const result=costSummary(plan,"2026-09");assert.equal(result.income,2377.2);assert.equal(result.expenses,530.17);assert.equal(result.savings,425);assert.equal(result.remaining,209.56);assert.equal(isCostPlan(plan),true)});
+
+test("savings toggle reconciles fixed and additional expenses separately without changing data",()=>{
+ const plan=structuredClone(initialCostPlan);plan.expenses.push({id:"saving-month",name:"Extra Sparrate",amount:75,refund:0,note:"",month:"2026-09",isSaving:true});
+ const before=structuredClone(plan),included=costSummary(plan,"2026-09"),excluded=costSummary(plan,"2026-09",false);
+ assert.equal(included.displayedFixed,1637.47);assert.equal(excluded.displayedFixed,1212.47);
+ assert.equal(included.displayedExpenses,605.17);assert.equal(excluded.displayedExpenses,530.17);
+ assert.equal(included.savings,500);assert.equal(excluded.savings,500);
+ assert.equal(excluded.displayedOut,1742.64);assert.equal(excluded.remaining,584.56);
+ assert.equal(roundMoney(included.income-included.displayedOut),included.remaining);
+ assert.deepEqual(plan,before);
+});

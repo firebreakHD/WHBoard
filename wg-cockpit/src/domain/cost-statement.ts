@@ -1,5 +1,5 @@
 import type { CostPlan, CostRow } from "./cost-plan.ts";
-import { newCostId } from "./cost-plan.ts";
+import { newCostId,regularRowsForMonth,updateCostRegulars,currentCostMonth,nextCostMonth } from "./cost-plan.ts";
 
 export type StatementTarget = "expenses" | "monthlyFixed" | "monthlyIncome";
 export type StatementRow = {
@@ -61,7 +61,8 @@ export function markCostStatementDuplicates(rows: StatementRow[], plan: CostPlan
 }
 export function matchingRegular(row:StatementRow,plan:CostPlan){
  const text=normalize(row.name+" "+row.note);
- const candidates=row.kind==="in"?plan.income:plan.fixed;
+ const regularRows=regularRowsForMonth(plan,row.date.slice(0,7));
+ const candidates=row.kind==="in"?regularRows.income:regularRows.fixed;
  const named=candidates.find(regular=>{
   const name=normalize(regular.name);if(name.length<4)return false;
   if(text.includes(name))return true;
@@ -94,9 +95,9 @@ export function fixedStatementChanges(plan:CostPlan,drafts:StatementRow[]):Fixed
  for(const regular of plan.fixed)if(!seen.has(regular.id))changes.push({action:"remove",id:regular.id,name:regular.name,amount:0,previous:regular.amount});
  return changes;
 }
-export function applyCostStatement(plan:CostPlan,drafts:StatementRow[],filename:string,options:{replaceManual?:boolean;updateFixed?:boolean}|boolean={}):{plan:CostPlan;count:number;skipped:number}{
+export function applyCostStatement(plan:CostPlan,drafts:StatementRow[],filename:string,options:{replaceManual?:boolean;updateFixed?:boolean;applyCurrent?:boolean;currentMonth?:string}|boolean={}):{plan:CostPlan;count:number;skipped:number}{
  const settings=typeof options==="boolean"?{replaceManual:options}:options;
- const next:CostPlan=structuredClone(plan);
+ let next:CostPlan=structuredClone(plan);
  const known=new Set([...next.expenses,...(next.monthlyFixed||[]),...(next.monthlyIncome||[])].map(row=>row.sourceFingerprint).filter(Boolean));
  const selected=drafts.filter(row=>row.selected);
  for(const row of selected){
@@ -107,13 +108,15 @@ export function applyCostStatement(plan:CostPlan,drafts:StatementRow[],filename:
  const months=new Set(selected.filter(row=>!known.has(row.fingerprint)).map(row=>row.date.slice(0,7)));
  if(settings.replaceManual)next.expenses=next.expenses.filter(row=>row.sourceFingerprint||!months.has(row.month));
  if(settings.updateFixed){
-  const fixedFingerprints=new Set(selected.filter(row=>row.target==="monthlyFixed").map(row=>row.fingerprint));
+  const fromMonth=settings.applyCurrent?(settings.currentMonth||currentCostMonth()):nextCostMonth(settings.currentMonth||currentCostMonth());
+  const fixedFingerprints=new Set(selected.filter(row=>row.target==="monthlyFixed"&&row.date.slice(0,7)>=fromMonth).map(row=>row.fingerprint));
   next.expenses=next.expenses.filter(row=>!row.sourceFingerprint||!fixedFingerprints.has(row.sourceFingerprint));
   for(const change of fixedStatementChanges(plan,drafts)){
    if(change.action==="remove")next.fixed=next.fixed.filter(row=>row.id!==change.id);
    else if(change.action==="update")next.fixed=next.fixed.map(row=>row.id===change.id?{...row,amount:change.amount}:row);
    else next.fixed.push({id:newCostId(),name:change.name,amount:change.amount,refund:0,note:change.draft?.note||"",month:change.draft!.date.slice(0,7),sourceFingerprint:change.draft?.fingerprint,sourceFile:filename.slice(0,300)});
   }
+  const fixed=next.fixed;next=updateCostRegulars({...next,fixed:plan.fixed},"fixed",fixed,settings.applyCurrent,settings.currentMonth);
  }
  let count=0,skipped=0;
  for(const draft of selected){

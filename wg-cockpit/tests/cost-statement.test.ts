@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { parseCostStatement, applyCostStatement, markCostStatementDuplicates,prepareCostStatement,fixedStatementChanges } from "../src/domain/cost-statement.ts";
 import { costSummary, isCostPlan } from "../src/domain/cost-plan.ts";
-import { initialCostPlan } from "../src/lib/cost-plan-seed.ts";
+import { initialCostPlan } from "./fixtures/cost-plan.ts";
 const text=`Kontoauszug Nr. 001/2026
 IBAN: AT000000000000000000
 Alter Kontostand 100,00
@@ -53,7 +53,7 @@ test("explicit fixed synchronization previews adds, edits and removals without c
  const plan={...structuredClone(initialCostPlan),fixed:initialCostPlan.fixed.slice(0,4)};
  const drafts=prepareCostStatement(parseCostStatement(text+"\nNetflix 06.09.2026 15,00-").rows,plan,true);
  const changes=fixedStatementChanges(plan,drafts);assert.equal(changes.filter(row=>row.action==="update").length,1);assert.equal(changes.filter(row=>row.action==="add").length,1);assert.equal(changes.filter(row=>row.action==="remove").length,3);
- const result=applyCostStatement(plan,drafts,"sample.pdf",{updateFixed:true});assert.equal(result.plan.fixed.length,2);assert.equal(result.plan.fixed.find(row=>row.name==="Internet")?.amount,100);assert.equal(result.plan.fixed.find(row=>row.name==="Netflix")?.amount,15);assert.deepEqual(result.plan.income,plan.income);assert.ok(result.plan.expenses.every(row=>row.month!=="2026-09"||!["Netflix","Internetrechnung","Gehalt"].includes(row.name)));
+ const result=applyCostStatement(plan,drafts,"sample.pdf",{updateFixed:true,applyCurrent:true,currentMonth:"2026-09"});assert.equal(result.plan.fixed.length,2);assert.equal(result.plan.fixed.find(row=>row.name==="Internet")?.amount,100);assert.equal(result.plan.fixed.find(row=>row.name==="Netflix")?.amount,15);assert.deepEqual(result.plan.income,plan.income);assert.ok(result.plan.expenses.every(row=>row.month!=="2026-09"||!["Netflix","Internetrechnung","Gehalt"].includes(row.name)));
 });
 
 test("salary matching by unique amount is reviewable and imports can be explicitly overridden",()=>{
@@ -62,12 +62,12 @@ test("salary matching by unique amount is reviewable and imports can be explicit
 test("promoting a previously imported expense to fixed cost does not double count it",()=>{
  const plan={...structuredClone(initialCostPlan),income:[],fixed:[],expenses:[]};const rows=parseCostStatement("Netflix 01.09.2026 15,00-").rows;
  const first=applyCostStatement(plan,prepareCostStatement(rows,plan),"a.pdf").plan;
- const result=applyCostStatement(first,prepareCostStatement(rows,first,true),"a.pdf",{updateFixed:true}).plan;
+ const result=applyCostStatement(first,prepareCostStatement(rows,first,true),"a.pdf",{updateFixed:true,applyCurrent:true,currentMonth:"2026-09"}).plan;
  assert.equal(result.fixed.length,1);assert.equal(result.expenses.length,0);assert.equal(costSummary(result,"2026-09").totalOut,15);
 });
 
 test("saving transfers retain their classification after fixed synchronization",()=>{
  const plan={...structuredClone(initialCostPlan),income:[],fixed:[],expenses:[]};const rows=parseCostStatement("Banküberweisung 01.09.2026 100,00-\nBausparvertrag Ansparen").rows;
- const result=applyCostStatement(plan,prepareCostStatement(rows,plan,true),"a.pdf",{updateFixed:true}).plan;
+ const result=applyCostStatement(plan,prepareCostStatement(rows,plan,true),"a.pdf",{updateFixed:true,applyCurrent:true,currentMonth:"2026-09"}).plan;
  assert.equal(costSummary(result,"2026-09").savings,100);
 });

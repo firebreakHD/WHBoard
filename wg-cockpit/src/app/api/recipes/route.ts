@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { localizeRecipeAmount, localizeRecipeIngredient, localizeRecipeIngredientMentions } from "@/lib/recipe-localization";
+import { isKnownGermanRecipeIngredient, localizeRecipeAmount, localizeRecipeIngredient, localizeRecipeIngredientMentions } from "@/lib/recipe-localization";
+
+import {containsSeafood, hasEnglishRecipeWords, RECIPE_POLICY_VERSION} from "@/lib/recipe-policy";
+import {translateRecipeText} from "@/lib/recipe-translation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type Meal = Record<string, string | null> & { idMeal?: string; strMeal?: string; strMealThumb?: string; strCategory?: string; strArea?: string; strInstructions?: string; strSource?: string; strYoutube?: string };
 type RecipeIngredient = { name: string; amount: string; hint?: string };
-type Recipe = { id: string; name: string; image: string; category: string; area: string; description?:string; instructions: string[]; source: string; ingredients: RecipeIngredient[]; portions?: number; ingredientCount?:number; detailsLoaded?:boolean; provider?:"cooklang"|"mealdb"; locale?:string };
+type Recipe = { id: string; name: string; image: string; category: string; area: string; description?:string; instructions: string[]; source: string; ingredients: RecipeIngredient[]; portions?: number; ingredientCount?:number; detailsLoaded?:boolean; provider?:"cooklang"|"mealdb"; locale?:string; policyVersion?:number };
 type CacheEntry = { expires: number; recipes: Recipe[] };
 type CooklangSearchItem = { id:number;title:string;summary?:string|null;tags?:string[];locale?:string;image_url?:string|null;source_url?:string|null;feed?:{title?:string} };
 type CooklangDetail = CooklangSearchItem & { content?:string; ingredients?:{name:string;quantity?:number|null;unit?:string|null}[]; servings?:number|null; total_time_minutes?:number|null };
@@ -15,14 +18,9 @@ const ttl = 60 * 60_000;
 const germanQueryAliases:Record<string,string[]>={"nudeln":["pasta"],"nudelauflauf":["pasta bake","pasta"],"kartoffeln":["potato"],"kartoffelauflauf":["potato casserole","potato"],"huhn":["chicken"],"hahnchen":["chicken"],"huhnchen":["chicken"],"rindfleisch":["beef"],"schweinefleisch":["pork"],"fisch":["fish"],"kuchen":["cake"],"pfannkuchen":["pancake"],"palatschinken":["pancake"],"suppe":["soup"],"salat":["salad"],"gemuse":["vegetable"],"reis":["rice"],"tomaten":["tomato"],"tomatensuppe":["tomato soup"],"pizza":["pizza"],"brot":["bread"],"fruhstuck":["breakfast"],"dessert":["dessert"],"gulasch":["goulash","hungarian goulash","beef stew"],"rindsgulasch":["goulash","hungarian goulash","beef stew"],"ungarisches gulasch":["hungarian goulash","goulash","beef stew"],"gulaschsuppe":["goulash soup","soup"],"kaiserschmarrn":["kaiserschmarrn","pancake"],"schnitzel":["schnitzel","breaded cutlet"],"spatzle":["spaetzle","pasta"],"bratkartoffeln":["fried potatoes","potato"],"erdapfel":["potato"],"faschierte laibchen":["meatballs","beef"],"fleischlaibchen":["meatballs","beef"],"schweinsbraten":["pork roast","pork"]};
 
 function normalizeQuery(value:string){return value.toLocaleLowerCase("de").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/ß/g,"ss").replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim()}
-async function translateText(text:string, direction:"de|en"|"en|de"="en|de"){const value=text.trim();if(!value||value.length>480)return text;try{const url=new URL("https://api.mymemory.translated.net/get");url.searchParams.set("q",value);url.searchParams.set("langpair",direction);const response=await fetch(url,{next:{revalidate:86400},signal:AbortSignal.timeout(3500)});if(!response.ok)return text;const result=await response.json() as {responseData?:{translatedText?:string};responseStatus?:number};const translated=result.responseData?.translatedText?.trim();return result.responseStatus===200&&translated&&translated.length<Math.max(140,value.length*3)?translated:text}catch{return text}}
-async function translateLongText(text:string){
-  if(text.trim().length<=450)return translateText(text);
-  const sentences=text.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g)?.map(part=>part.trim()).filter(Boolean)??[text];
-  const chunks:string[]=[];let current="";
-  for(const sentence of sentences){if(current&&`${current} ${sentence}`.length>430){chunks.push(current);current=sentence}else current=current?`${current} ${sentence}`:sentence}
-  if(current)chunks.push(current);
-  return (await Promise.all(chunks.map(chunk=>translateText(chunk)))).join(" ");
+async function translateText(text:string,direction:"de|en"|"en|de"="en|de"){
+  // Query expansion can fall back to the German search; recipe content cannot.
+  try{return await translateRecipeText(text,direction)}catch(error){if(direction==="de|en")return text;throw error}
 }
 async function searchTerms(query:string){const key=normalizeQuery(query);const aliases=germanQueryAliases[key]??germanQueryAliases[key.replace(/\s+/g,"")];const translated=aliases?.[0]??await translateText(query,"de|en");return [...new Set([translated,...(aliases??[]),query].map(value=>value.trim()).filter(Boolean))].slice(0,4)}
 
@@ -64,18 +62,42 @@ function mapMeal(meal: Meal | null | undefined): Recipe | null {
 }
 
 async function germanize(recipe:Recipe,complete=true):Promise<Recipe>{
-  const germanSource=recipe.locale?.toLowerCase().startsWith("de")??false;
-  const metadata:[string,string,string,string]=germanSource?[recipe.name,recipe.category,recipe.area,recipe.description??""]:await Promise.all([recipe.name,recipe.category,recipe.area,recipe.description??""].map(text=>text?translateText(text,"en|de"):Promise.resolve(""))) as [string,string,string,string];
-  const [name,category,area,description]=metadata;
-  const instructions=complete?await Promise.all(recipe.instructions.map(async text=>localizeRecipeIngredientMentions(germanSource?text:await translateLongText(text)))):[];
+  if(containsSeafood(recipe))throw new Error("Rezepte mit Fisch oder Meeresfrüchten sind ausgeschlossen.");
+  const locale=recipe.locale?.toLowerCase().split(/[-_]/)[0]??"en";
+  const germanSource=locale==="de";
+  const text=async(value:string,alreadyLocalized=false)=>{
+    if(!value)return "";
+    if((germanSource||alreadyLocalized)&&!hasEnglishRecipeWords(value))return value;
+    return translateRecipeText(value,"en|de",germanSource?"en":locale);
+  };
+  const [name,category,area,description]=await Promise.all([recipe.name,recipe.category,recipe.area,recipe.description??""].map(value=>text(value)));
+  const instructions=complete?await Promise.all(recipe.instructions.map(async value=>localizeRecipeIngredientMentions(await text(value)))):[];
   const ingredients=await Promise.all(recipe.ingredients.map(async ingredient=>{
     const localized=localizeRecipeIngredient(ingredient.name);
-    const translatedName=complete&&!germanSource&&localized.name===ingredient.name?await translateText(ingredient.name,"en|de"):localized.name;
-    const finalName=localizeRecipeIngredient(translatedName).name;
-    const hint=ingredient.hint?localizeRecipeIngredientMentions(complete&&!germanSource?await translateText(ingredient.hint,"en|de"):ingredient.hint):localized.hint;
-    return{...ingredient,name:finalName,amount:localizeRecipeAmount(ingredient.amount),hint};
+    const name=localizeRecipeIngredient(await text(localized.name,localized.name!==ingredient.name||isKnownGermanRecipeIngredient(localized.name))).name;
+    const amount=localizeRecipeAmount(ingredient.amount);
+    const hint=localizeRecipeIngredientMentions(ingredient.hint||localized.hint||"");
+    return{name,amount:await text(amount,/^[\d\s.,/½¼¾–-]*(?:g|kg|ml|l|EL|TL|Stück|Tasse|Zehen|Prise|Handvoll|Bund|Scheiben|Päckchen|Dosen)?$/i.test(amount)),hint:await text(hint,true)};
   }));
-  return{...recipe,name,category,area,description:description||undefined,ingredients,instructions,detailsLoaded:complete};
+  const result={...recipe,name,category,area,description:description||undefined,ingredients,instructions,detailsLoaded:complete,policyVersion:RECIPE_POLICY_VERSION};
+  if(containsSeafood(result))throw new Error("Rezepte mit Fisch oder Meeresfrüchten sind ausgeschlossen.");
+  return result;
+}
+
+async function cooklangDetail(id:number){
+  const response=await fetch(`https://recipes.cooklang.org/api/recipes/${id}`,{next:{revalidate:86400},signal:AbortSignal.timeout(4000),headers:{accept:"application/json"}});
+  if(!response.ok)throw new Error("Rezeptdetails konnten nicht geladen werden.");
+  return mapCooklangDetail(await response.json() as CooklangDetail);
+}
+
+async function safeCards(candidates:Recipe[]){
+  // Cooklang summaries contain no ingredients: inspect the full recipe first.
+  const results=await Promise.allSettled(candidates.filter(recipe=>!containsSeafood(recipe)).slice(0,180).map(async recipe=>{
+    const checked=recipe.provider==="cooklang"?await cooklangDetail(Number(recipe.id.slice(9))):recipe;
+    if(!checked.ingredients.length||containsSeafood(checked))return null;
+    return germanize(checked,false);
+  }));
+  return results.flatMap(result=>result.status==="fulfilled"&&result.value?[result.value]:[]);
 }
 
 async function mealDb(url: URL, fresh = false) {
@@ -88,12 +110,12 @@ export async function GET(request: NextRequest) {
   const query = (request.nextUrl.searchParams.get("q") ?? "").trim().replace(/\s+/g, " ");
   const fresh=request.nextUrl.searchParams.get("fresh")==="1";
   const detailId=request.nextUrl.searchParams.get("id")??"";
-  if(detailId.startsWith("mealdb-")){const id=detailId.slice("mealdb-".length);if(!/^\d+$/.test(id))return NextResponse.json({error:"Rezept nicht gefunden."},{status:400});try{const url=new URL("https://www.themealdb.com/api/json/v1/1/lookup.php");url.searchParams.set("i",id);const data=await mealDb(url);const recipe=mapMeal(data.meals?.[0]);if(!recipe)throw new Error("Rezeptdetails konnten nicht geladen werden.");return NextResponse.json({recipe:await germanize(recipe)},{headers:{"Cache-Control":"public, max-age=3600, stale-while-revalidate=7200"}})}catch(error){const message=error instanceof Error?error.message:"Rezept konnte nicht geladen werden.";return NextResponse.json({error:message},{status:502,headers:{"Cache-Control":"no-store"}})}}
-  if(detailId.startsWith("cooklang-")){const id=Number(detailId.slice("cooklang-".length));if(!Number.isSafeInteger(id)||id<1)return NextResponse.json({error:"Rezept nicht gefunden."},{status:400});try{const response=await fetch(`https://recipes.cooklang.org/api/recipes/${id}`,{next:{revalidate:86400},signal:AbortSignal.timeout(9000),headers:{accept:"application/json"}});if(!response.ok)throw new Error(`Cooklang antwortet mit ${response.status}.`);const detail=await response.json() as CooklangDetail;return NextResponse.json({recipe:await germanize(mapCooklangDetail(detail))},{headers:{"Cache-Control":"public, max-age=3600, stale-while-revalidate=7200"}})}catch(error){const message=error instanceof Error?error.message:"Rezept konnte nicht geladen werden.";return NextResponse.json({error:message},{status:502,headers:{"Cache-Control":"no-store"}})}}
+  if(detailId.startsWith("mealdb-")){const id=detailId.slice("mealdb-".length);if(!/^\d+$/.test(id))return NextResponse.json({error:"Rezept nicht gefunden."},{status:400});try{const url=new URL("https://www.themealdb.com/api/json/v1/1/lookup.php");url.searchParams.set("i",id);const data=await mealDb(url);const recipe=mapMeal(data.meals?.[0]);if(!recipe)throw new Error("Rezeptdetails konnten nicht geladen werden.");return NextResponse.json({recipe:await germanize(recipe)},{headers:{"Cache-Control":"no-store"}})}catch(error){const message=error instanceof Error?error.message:"Rezept konnte nicht geladen werden.";return NextResponse.json({error:message},{status:502,headers:{"Cache-Control":"no-store"}})}}
+  if(detailId.startsWith("cooklang-")){const id=Number(detailId.slice("cooklang-".length));if(!Number.isSafeInteger(id)||id<1)return NextResponse.json({error:"Rezept nicht gefunden."},{status:400});try{return NextResponse.json({recipe:await germanize(await cooklangDetail(id))},{headers:{"Cache-Control":"no-store"}})}catch(error){const message=error instanceof Error?error.message:"Rezept konnte nicht geladen werden.";return NextResponse.json({error:message},{status:502,headers:{"Cache-Control":"no-store"}})}}
   if (query.length > 80) return NextResponse.json({ error: "Bitte kürzer suchen." }, { status: 400 });
   const key = query ? `search:${query.toLocaleLowerCase("de")}` : "discover";
   const cached = cache.get(key);
-  if (!fresh&&cached && cached.expires > Date.now()) return NextResponse.json({ recipes: cached.recipes, source: "TheMealDB + Cooklang Federation" }, { headers: { "Cache-Control": "public, max-age=900, stale-while-revalidate=1800" } });
+  if (!fresh&&cached && cached.expires > Date.now()) return NextResponse.json({ recipes: cached.recipes, source: "TheMealDB + Cooklang Federation" }, { headers: { "Cache-Control": "no-store" } });
 
   try {
     let meals: Meal[] = [];
@@ -120,17 +142,16 @@ export async function GET(request: NextRequest) {
         const score=(recipe:Recipe)=>{const title=normalizeQuery(recipe.name);if(title===normalizedQuery)return 0;if(title.startsWith(`${normalizedQuery} `)||title.includes(` ${normalizedQuery} `))return 1;const matched=searchWords.filter(word=>title.includes(word)).length;return 10-matched};
         return score(a)-score(b)||a.name.localeCompare(b.name,"de");
       }).slice(0,180);
-      const [complete,cookCardsToTranslate]=[relevant.filter(recipe=>recipe.provider!=="cooklang"),relevant.filter(recipe=>recipe.provider==="cooklang")];
-      const recipes=[...await Promise.all(complete.map(recipe=>germanize(recipe,false))),...await Promise.all(cookCardsToTranslate.map(recipe=>germanize(recipe,false)))];
+      const recipes=await safeCards(relevant);
       if(!fresh)cache.set(key,{recipes,expires:Date.now()+ttl});
-      return NextResponse.json({recipes,source:"TheMealDB + Cooklang Federation"},{headers:{"Cache-Control":fresh?"no-store":"public, max-age=900, stale-while-revalidate=1800"}});
+      return NextResponse.json({recipes,source:"TheMealDB + Cooklang Federation"},{headers:{"Cache-Control":fresh?"no-store":"no-store"}});
     } else {
       const picks = await Promise.allSettled(Array.from({ length: 15 }, () => mealDb(new URL("https://www.themealdb.com/api/json/v1/1/random.php"), true)));
       meals = picks.flatMap((pick) => pick.status === "fulfilled" ? pick.value.meals ?? [] : []);
     }
-    const recipes = await Promise.all([...new Map(meals.map(mapMeal).filter((recipe): recipe is Recipe => Boolean(recipe)).map((recipe) => [recipe.id, recipe])).values()].slice(0, query?180:9).map(recipe=>germanize(recipe,false)));
+    const recipes = (await safeCards([...new Map(meals.map(mapMeal).filter((recipe): recipe is Recipe => Boolean(recipe)).map((recipe) => [recipe.id, recipe])).values()])).slice(0,9);
     if(!fresh)cache.set(key, { recipes, expires: Date.now() + ttl });
-    return NextResponse.json({ recipes, source: "TheMealDB + Cooklang Federation" }, { headers: { "Cache-Control": fresh?"no-store":"public, max-age=900, stale-while-revalidate=1800" } });
+    return NextResponse.json({ recipes, source: "TheMealDB + Cooklang Federation" }, { headers: { "Cache-Control": fresh?"no-store":"no-store" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Rezepte konnten nicht geladen werden.";
     return NextResponse.json({ error: message, recipes: [] }, { status: 502, headers: { "Cache-Control": "no-store" } });

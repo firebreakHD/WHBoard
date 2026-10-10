@@ -1,7 +1,7 @@
-import { costSummary,isSavingRow,sumCosts,roundMoney,type CostPlan } from "./cost-plan.ts";
+import { costSummary,isSavingRow,sumCosts,roundMoney,regularRowsForMonth,type CostPlan } from "./cost-plan.ts";
 export const savingsSource="https://www.verbraucherzentrale.de/wissen/geld-versicherungen/sparen-und-anlegen/haushaltsbuch-fuehren-ueberblick-ueber-ihre-finanzen-52179";
 export function costSuggestions(plan:CostPlan,month:string,percent=10){
- const fixed=plan.actualMonths?.includes(month)?(plan.monthlyFixed||[]).filter(row=>row.month===month):plan.fixed;
+ const fixed=regularRowsForMonth(plan,month).fixed;
  const spending=[...fixed,...plan.expenses.filter(row=>row.month===month&&row.kind!=="in")].filter(row=>!isSavingRow(row));
  const rules=[
   {title:"Abos und digitale Dienste prüfen",pattern:/netflix|spotify|disney|amazon prime|abo|microsoft|mitglied/i,tip:"Prüfe, welche Dienste du tatsächlich nutzt. Unbenutzte Abos zuerst ansehen."},

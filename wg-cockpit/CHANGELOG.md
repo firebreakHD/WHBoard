@@ -1,3 +1,19 @@
+## 0.1.117
+
+- Prüft Rezeptvorschläge und Details dauerhaft auf Fisch und Meeresfrüchte, einschließlich Fischsauce und versteckter Zutaten.
+- Übersetzt Rezeptnamen, Zutaten, Mengenhinweise, Beschreibungen und Schritte serverseitig ins Deutsche; zeigt bei Übersetzungsfehlern keinen englischen Ersatztext.
+- Prüft ältere gespeicherte Rezeptfavoriten erneut und korrigiert die Aktualisierung gespeicherter Rezeptdetails.
+- Platziert Entdecken links und die Umschaltung Textlich / Symbol rechts in der Einkaufsliste.
+
+## 0.1.116
+
+- Zeigt Gehalt und Fixkosten im Monatsüberblick ausschließlich in den Summen; die Buchungszeilen enthalten nur zusätzliche Monatseinnahmen und -ausgaben.
+- Trennt Fixkosten und Ausgaben ohne Fixkosten und schaltet beide Summen sowie Gesamtkosten und Rest live mit oder ohne Sparbeträge um.
+- Zeigt den gesamten Sparbetrag weiterhin separat an.
+- Speichert Fixeinnahmen und Fixausgaben nach Gültigkeitsmonat: Änderungen gelten ab dem nächsten Monat, mit Haken auch im aktuellen Monat; frühere Monate bleiben unverändert.
+- Ersetzt die Abschlussrechnung durch eine freie Gegenrechnung mit eigenen Eingaben pro Monat.
+- Startet neue Kostenrechnungen ohne vorbelegte Werte und ergänzt einen PIN-bestätigten Löschdialog für Monatsbuchungen oder den vollständigen Reset.
+
 ## 0.1.115
 
 - Liest PDF-Kontoauszüge im Add-on statt über einen Browser-Worker und liefert Fehler oder eine Vorschau direkt an das Gerät zurück.
