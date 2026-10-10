@@ -422,9 +422,12 @@ html[data-motion="normal"] .page-stack>*,html[data-motion="normal"] .bring-tile{
 
 .mobile-cost-access{display:none}@media(max-width:760px){.mobile-cost-access{display:flex;justify-content:flex-end;padding:8px 12px 0}.mobile-cost-link{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 13px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--green-dark);font-size:12px;font-weight:700;-webkit-tap-highlight-color:transparent}.mobile-cost-link:active{background:var(--green-light)}}
 
-/* Shopping actions: discover at the left, display choice at the right. */
-.shopping-discover-launch{display:grid;place-items:center;flex:none;width:34px;height:34px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--green-dark)}
-.shopping-layout-buttons{display:flex;gap:3px;margin-left:auto;flex:none;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
-.shopping-layout-buttons button{border:0;border-radius:7px;padding:6px 8px;background:transparent;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer}
-.shopping-layout-buttons button[aria-pressed="true"]{background:var(--green-dark);color:white}
-@media(max-width:760px){.bring-board-heading{flex-wrap:wrap}.bring-board-heading>.shopping-discover-launch{order:0}.bring-board-heading>h2{order:1}.bring-board-heading>.shopping-mobile-tools{order:2;flex:1;width:auto;flex-wrap:wrap}.bring-board-heading>.shopping-search-expanded{order:3}.shopping-mobile-tools .shopping-start-launch{margin-left:0}.shopping-layout-buttons{margin-left:auto}}
+/* Three shopping actions on the left, purchase booking on the right. */
+.bring-board-heading{flex-wrap:wrap;gap:8px}
+.bring-board-heading>h2{flex:0 0 100%}
+.bring-board-heading>.shopping-mobile-tools{width:100%;justify-content:flex-start;flex-wrap:nowrap}
+.shopping-mobile-tools .shopping-discover-launch{display:flex;align-items:center;justify-content:center;gap:6px;width:auto;padding:0 9px;font-size:11px;font-weight:700;white-space:nowrap}
+.shopping-mobile-tools .shopping-start-launch{margin-left:auto;flex:none}
+@media(max-width:360px){.shopping-mobile-tools{gap:4px}.shopping-mobile-tools .shopping-discover-launch{padding-inline:6px;gap:4px;font-size:10px}.shopping-mobile-tools .shopping-start-launch{gap:5px;font-size:10px}.shopping-mobile-tools .shopping-start-launch.has-active-run{padding-inline:4px}.shopping-mobile-tools .shopping-start-launch small{display:none}}
+
+.recipe-tab-refresh{align-self:flex-end}

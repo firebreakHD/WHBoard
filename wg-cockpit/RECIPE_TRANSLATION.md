@@ -2,6 +2,8 @@
 
 Für Vorschläge gelten dauerhaft: deutsche Anzeige und kein Fisch / keine Meeresfrüchte. Auch Zutaten und Zubereitung werden geprüft. Cooklang-Kurztexte werden erst nach einer Zutatenprüfung vorgeschlagen. Eigene gespeicherte Texte werden nicht automatisch umgeschrieben.
 
+Vorschläge kommen bevorzugt aus drei bereits deutschsprachigen Quellen mit Rezeptfotos: GuteKueche Österreich, GuteKueche Deutschland und LECKER. Die Auswahl mischt die Quellen. Fisch, Meeresfrüchte und fehlende Bilder werden vor der Anzeige ausgeschlossen. TheMealDB und Cooklang ergänzen die Auswahl, soweit eine deutsche Übersetzung und Bilder verfügbar sind. Pro Vorschlagsbereich werden bis zu neun unterschiedliche passende Rezepte angezeigt; bei einem Ausfall bleiben die bisherigen Vorschläge erhalten.
+
 Die Übersetzung läuft im Add-on auf dem Server über MyMemory. Erfolgreiche Übersetzungen werden zwischengespeichert. Bei Fehlern, Zeitüberschreitungen oder ausgeschöpftem Kontingent wird kein englischer Originaltext angezeigt. Betroffene Vorschläge werden ausgelassen; beim Öffnen erscheint eine deutsche Fehlermeldung. Die Zahl der Vorschläge kann dadurch kleiner sein.
 
 Optional kann ein eigener LibreTranslate-Dienst genutzt werden:

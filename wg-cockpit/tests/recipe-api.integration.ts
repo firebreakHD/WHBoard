@@ -6,7 +6,7 @@ import {GET} from "../src/app/api/recipes/route";
 test("provider details translate every visible field and reject hidden seafood",async()=>{
  const original=globalThis.fetch;
  const german:Record<string,string>={"Chicken soup":"Hühnersuppe","Chicken":"Hühnergerichte","British":"Britisch","Add the onions.":"Die Zwiebeln dazugeben.","Then cook for five minutes.":"Danach fünf Minuten kochen.","2 for garnish":"2 zum Garnieren"};
- const meal={idMeal:"123",strMeal:"Chicken soup",strCategory:"Chicken",strArea:"British",strInstructions:"Add the onions. Then cook for five minutes.",strIngredient1:"Onions",strMeasure1:"2 for garnish"};
+ const meal={idMeal:"123",strMeal:"Chicken soup",strMealThumb:"https://images.example/chicken.jpg",strCategory:"Chicken",strArea:"British",strInstructions:"Add the onions. Then cook for five minutes.",strIngredient1:"Onions",strMeasure1:"2 for garnish"};
  let seafood=false;let failed=false;
  try{
   globalThis.fetch=async(input)=>{
@@ -34,12 +34,29 @@ test("search checks Cooklang ingredients before suggesting a seemingly vegetaria
   globalThis.fetch=async input=>{
    const url=new URL(String(input));
    if(url.pathname.endsWith("search.php"))return Response.json({meals:[]});
-   if(url.pathname==="/api/search")return Response.json({results:[{id:1,title:"Gemüsesuppe",locale:"de"},{id:2,title:"Gemüsesuppe ohne Meerestiere",locale:"de"},{id:3,title:"Gemüsesuppe mit Karotten",locale:"de"}]});
+   if(url.pathname==="/api/search")return Response.json({results:[{id:1,title:"Gemüsesuppe",locale:"de"},{id:2,title:"Gemüsesuppe ohne Meerestiere",locale:"de"},{id:3,title:"Gemüsesuppe mit Karotten",locale:"de",image_url:"https://images.example/carrot.jpg"}]});
    if(url.pathname==="/api/recipes/1")return Response.json({id:1,title:"Gemüsesuppe",locale:"de",ingredients:[{name:"Fish Sauce"}],content:"Alles verrühren."});
-   if(url.pathname==="/api/recipes/3")return Response.json({id:3,title:"Gemüsesuppe mit Karotten",locale:"de",ingredients:[{name:"Karotten",quantity:2,unit:"g"}],content:"Die Karotten kochen."});
+   if(url.pathname==="/api/recipes/3")return Response.json({id:3,title:"Gemüsesuppe mit Karotten",locale:"de",image_url:"https://images.example/carrot.jpg",ingredients:[{name:"Karotten",quantity:2,unit:"g"}],content:"Die Karotten kochen."});
    throw new Error(`Unexpected request: ${url}`);
   };
   const response=await GET(new NextRequest("http://localhost/api/recipes?q=Gemüsesuppe&fresh=1"));assert.equal(response.status,200);
   const {recipes}=await response.json();assert.deepEqual(recipes.map((recipe:{id:string})=>recipe.id),["cooklang-3"]);assert.equal(recipes[0].policyVersion,1);
+ }finally{globalThis.fetch=original}
+});
+
+test("discover fills nine distinct allowed recipes after rejecting the first seafood batch",async()=>{
+ const original=globalThis.fetch;let calls=0;
+ try{
+  globalThis.fetch=async input=>{
+   const url=new URL(String(input));
+   if(url.pathname.endsWith("random.php")){
+    const index=calls++;
+    return Response.json({meals:[index<15?{idMeal:`${index}`,strMeal:"Salmon",strIngredient1:"Fish"}:{idMeal:`${100+index%9}`,strMeal:`Vegetable dish ${index%9}`,strMealThumb:"https://images.example/vegetables.jpg",strIngredient1:"Onions",strMeasure1:"2"}]});
+   }
+   if(url.hostname==="api.mymemory.translated.net")return Response.json({responseStatus:200,responseData:{translatedText:`Gemüsegericht ${url.searchParams.get("q")?.match(/\d+/)?.[0]}`}});
+   throw new Error(`Unexpected request ${url}`);
+  };
+  const response=await GET(new NextRequest("http://localhost/api/recipes?limit=9&fresh=1"));assert.equal(response.status,200);
+  const {recipes}=await response.json();assert.equal(recipes.length,9);assert.equal(new Set(recipes.map((recipe:{id:string})=>recipe.id)).size,9);assert.ok(recipes.every((recipe:{name:string})=>recipe.name.startsWith("Gemüsegericht")));assert.equal(calls,30);
  }finally{globalThis.fetch=original}
 });

@@ -28,3 +28,5 @@ export function useHouseholdState<T>(key:string,initial:T):[T,(next:T|((current:
  const update=useCallback((next:T|((current:T)=>T))=>{const current=(sharedState&&Object.prototype.hasOwnProperty.call(sharedState,key)?sharedState[key]:valueRef.current) as T;const resolved=typeof next==="function"?(next as (current:T)=>T)(current):next;valueRef.current=resolved;setValue(resolved);sharedState={...(sharedState||{}),[key]:resolved};notify();persistKey(key)},[key]);
  return[value,update,ready];
 }
+
+export async function refreshHouseholdState(){await loadSharedState()}

@@ -1,3 +1,18 @@
+## 0.1.119
+
+- Ergänzt GuteKueche Österreich, GuteKueche Deutschland und LECKER mit deutschen Rezepten und echten Rezeptbildern; mischt die Quellen für Vorschläge.
+- Nutzt bevorzugt deutsche Quellen und zeigt ausgeschöpfte Übersetzungskontingente verständlich an.
+
+- Begrenzt Entdecken, Saison und Tageszeit auf jeweils neun geprüfte Rezeptvorschläge.
+- Sucht bei zufälligen Vorschlägen weitere Kandidaten nach, wenn Fischfilter, doppelte Rezepte oder fehlende Übersetzungen die Auswahl verkleinern.
+- Repariert das Herunterziehen zum Aktualisieren nach dem Laden der Rezeptansicht und aktualisiert dabei immer den geöffneten Rezeptbereich.
+- Ergänzt für die übrigen Rezeptbereiche eine gemeinsame Aktualisierung und am PC eine Aktualisieren-Schaltfläche.
+
+## 0.1.118
+
+- Entfernt die zusätzlich eingebaute Umschaltung Textlich / Symbol aus der Einkaufsliste.
+- Zeigt links Entdecken mit Kompass und Text, Kundenkarten und Suche; Einkauf buchen bleibt rechts.
+
 ## 0.1.117
 
 - Prüft Rezeptvorschläge und Details dauerhaft auf Fisch und Meeresfrüchte, einschließlich Fischsauce und versteckter Zutaten.

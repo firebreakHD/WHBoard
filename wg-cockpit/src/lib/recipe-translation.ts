@@ -2,6 +2,9 @@ import {hasEnglishRecipeWords} from "./recipe-policy.ts";
 
 const translations=new Map<string,Promise<string>>();
 const unavailable="Die deutsche Übersetzung ist gerade nicht verfügbar. Bitte später erneut versuchen.";
+let translationIssue:string|undefined;
+let retryAfter=0;
+export function getRecipeTranslationIssue(){return Date.now()<retryAfter?translationIssue:undefined}
 let active=0;
 const waiting:(()=>void)[]=[];
 async function limited<T>(work:()=>Promise<T>):Promise<T>{
@@ -23,6 +26,7 @@ export function translationChunks(text:string){
 export async function translateRecipeText(text:string,direction:"en|de"|"de|en"="en|de",source="en"):Promise<string>{
   if(!text.trim())return "";
   const key=`${direction}:${source}:${text}`;const cached=translations.get(key);if(cached)return cached;
+  if(getRecipeTranslationIssue())throw new Error(translationIssue);
   const pending=Promise.all(translationChunks(text).map(chunk=>limited(async()=>{
     try{
       let translated:string|undefined;
@@ -34,9 +38,11 @@ export async function translateRecipeText(text:string,direction:"en|de"|"de|en"=
       }else{
         const url=new URL("https://api.mymemory.translated.net/get");url.searchParams.set("q",chunk);url.searchParams.set("langpair",direction==="de|en"?direction:`${source}|de`);
         const response=await fetch(url,{signal:AbortSignal.timeout(5000)});
+        if(response.status===429){translationIssue="Das Tageslimit für die deutsche Übersetzung ist erreicht. Bereits deutsche Rezeptquellen werden weiterhin geladen.";retryAfter=Date.now()+60_000;throw new Error(translationIssue)}
         if(!response.ok)throw new Error(unavailable);
         const result=await response.json() as {responseData?:{translatedText?:string};responseStatus?:number;quotaFinished?:boolean};
-        if(result.responseStatus!==200||result.quotaFinished)throw new Error(unavailable);
+        if(result.quotaFinished){translationIssue="Das Tageslimit für die deutsche Übersetzung ist erreicht. Bereits deutsche Rezeptquellen werden weiterhin geladen.";retryAfter=Date.now()+60_000;throw new Error(translationIssue)}
+        if(result.responseStatus!==200)throw new Error(unavailable);
         translated=result.responseData?.translatedText;
       }
       if(typeof translated!=="string"||!translated.trim()||/MYMEMORY WARNING|QUERY LENGTH LIMIT|INVALID LANGUAGE|DAILY LIMIT/i.test(translated))throw new Error(unavailable);
@@ -46,7 +52,7 @@ export async function translateRecipeText(text:string,direction:"en|de"|"de|en"=
       // Only allow shared dish names and numeric measurements in that case.
       if(direction==="en|de"&&source!=="de"&&value.toLowerCase()===chunk.toLowerCase()&&/[a-z]/i.test(value)&&! /^(?:pizza|pasta|curry|dessert|gulasch|goulash|risotto|lasagne|lasagna|stroganoff|schnitzel|kaiserschmarrn|falafel|hummus|tiramisu|[\d\s.,/½¼¾–-]+(?:g|kg|ml|l|EL|TL|Stück))$/i.test(value))throw new Error(unavailable);
       return value;
-    }catch{throw new Error(unavailable)}
+    }catch{throw new Error(getRecipeTranslationIssue()??unavailable)}
   }))).then(parts=>parts.join(" "));
   translations.set(key,pending);
   try{const result=await pending;if(translations.size>3000)translations.delete(translations.keys().next().value!);return result}catch(error){translations.delete(key);throw error}
