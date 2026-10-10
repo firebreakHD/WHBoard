@@ -4,7 +4,7 @@ import { newCostId } from "./cost-plan.ts";
 export type StatementTarget = "expenses" | "monthlyFixed" | "monthlyIncome";
 export type StatementRow = {
   id: string; date: string; name: string; amount: number; kind: "in" | "out";
-  note: string; fingerprint: string; target: StatementTarget; selected: boolean; duplicate: boolean;
+  note: string; fingerprint: string; target: StatementTarget; selected: boolean; duplicate: boolean; matchedRegular?:string; suggestedFixed?:boolean; keepMonthly?:boolean;
 };
 export type CostStatement = { rows: StatementRow[]; opening?: number; closing?: number; credits?: number; debits?: number; warnings: string[] };
 const money = (value: string) => Number(value.replace(/\./g, "").replace(",", ".").replace(/[-−]/g, ""));
@@ -59,21 +59,68 @@ export function markCostStatementDuplicates(rows: StatementRow[], plan: CostPlan
   const known=new Set([...plan.expenses,...(plan.monthlyFixed||[]),...(plan.monthlyIncome||[])].map(row=>row.sourceFingerprint).filter(Boolean));
   return rows.map(row=>({...row,duplicate:known.has(row.fingerprint),selected:!known.has(row.fingerprint)}));
 }
-export function applyCostStatement(plan: CostPlan, drafts: StatementRow[], filename: string, replaceManual=false): {plan:CostPlan;count:number;skipped:number} {
-  const next: CostPlan=structuredClone(plan);
-  next.monthlyFixed??=[];next.monthlyIncome??=[];next.actualMonths??=[];
-  const known=new Set([...next.expenses,...next.monthlyFixed,...next.monthlyIncome].map(row=>row.sourceFingerprint).filter(Boolean));
-  const months=new Set(drafts.filter(row=>row.selected&&!known.has(row.fingerprint)).map(row=>row.date.slice(0,7)));
-  if(replaceManual)next.expenses=next.expenses.filter(row=>row.sourceFingerprint||!months.has(row.month));
-  let count=0,skipped=0;
-  for(const draft of drafts){
-    if(!draft.selected)continue;
-    if(known.has(draft.fingerprint)){skipped++;continue;}
-    if(!/^\d{4}-(0[1-9]|1[0-2])-\d{2}$/.test(draft.date)||!draft.name.trim()||!Number.isFinite(draft.amount)||draft.amount<0||draft.amount>1e9||!(["expenses","monthlyFixed","monthlyIncome"] as string[]).includes(draft.target))throw new Error("Bitte Datum, Bezeichnung und Betrag aller ausgewählten Buchungen prüfen.");
-    if((draft.kind==="in")!==(draft.target==="monthlyIncome"))throw new Error("Einnahmen und Ausgaben müssen zur gewählten Zuordnung passen.");
-    const month=draft.date.slice(0,7);
-    const row:CostRow={id:"statement-"+newCostId(),name:draft.name.slice(0,300),amount:draft.amount,refund:0,note:draft.note.slice(0,2000),month,date:draft.date,sourceFingerprint:draft.fingerprint,sourceFile:filename.slice(0,300)};
-    next[draft.target]!.push(row);known.add(draft.fingerprint);if(!next.actualMonths.includes(month))next.actualMonths.push(month);count++;
+export function matchingRegular(row:StatementRow,plan:CostPlan){
+ const text=normalize(row.name+" "+row.note);
+ const candidates=row.kind==="in"?plan.income:plan.fixed;
+ const named=candidates.find(regular=>{
+  const name=normalize(regular.name);if(name.length<4)return false;
+  if(text.includes(name))return true;
+  const tokens=name.split(/[^a-z0-9]+/).filter(token=>token.length>=4&&!/^(kosten|versicherung|sparen|stufe|leben)$/.test(token));
+  if(tokens.length&&tokens.every(token=>text.includes(token)))return true;
+  return name==="strom"&&/wasserkraft|stromrechnung/.test(text);
+ });
+ if(named)return named;
+ const amountMatches=candidates.filter(regular=>Math.abs(regular.amount-row.amount)<.005);
+ return (row.kind==="in"||row.suggestedFixed||row.target==="monthlyFixed")&&amountMatches.length===1?amountMatches[0]:undefined;
+}
+export function prepareCostStatement(rows:StatementRow[],plan:CostPlan,updateFixed=false){
+ return markCostStatementDuplicates(rows,plan).map(row=>{
+  const regular=matchingRegular(row,plan);
+  const suggestedFixed=row.suggestedFixed??row.target==="monthlyFixed";
+  const target:StatementTarget=updateFixed&&row.kind==="out"&&(regular||suggestedFixed)?"monthlyFixed":"expenses";
+  return {...row,suggestedFixed,target,matchedRegular:regular?.name,selected:(!row.duplicate||target==="monthlyFixed")&&(!regular||updateFixed&&row.kind==="out")};
+ });
+}
+export type FixedChange={action:"add"|"update"|"remove";name:string;amount:number;previous?:number;id?:string;draft?:StatementRow};
+export function fixedStatementChanges(plan:CostPlan,drafts:StatementRow[]):FixedChange[]{
+ const candidates=drafts.filter(row=>row.selected&&row.kind==="out"&&row.target==="monthlyFixed");
+ const groups=new Map<string,{draft:StatementRow;amount:number;regular?:CostRow}>();
+ for(const draft of candidates){const regular=matchingRegular(draft,plan);const key=regular?.id||normalize(draft.name);const previous=groups.get(key);groups.set(key,{draft,regular,amount:(previous?.amount||0)+draft.amount});}
+ const changes:FixedChange[]=[];const seen=new Set<string>();
+ for(const {draft,regular,amount} of groups.values()){
+  if(regular){seen.add(regular.id);if(Math.abs(regular.amount-amount)>.005)changes.push({action:"update",id:regular.id,name:regular.name,amount,previous:regular.amount,draft})}
+  else changes.push({action:"add",name:draft.name,amount,draft});
+ }
+ for(const regular of plan.fixed)if(!seen.has(regular.id))changes.push({action:"remove",id:regular.id,name:regular.name,amount:0,previous:regular.amount});
+ return changes;
+}
+export function applyCostStatement(plan:CostPlan,drafts:StatementRow[],filename:string,options:{replaceManual?:boolean;updateFixed?:boolean}|boolean={}):{plan:CostPlan;count:number;skipped:number}{
+ const settings=typeof options==="boolean"?{replaceManual:options}:options;
+ const next:CostPlan=structuredClone(plan);
+ const known=new Set([...next.expenses,...(next.monthlyFixed||[]),...(next.monthlyIncome||[])].map(row=>row.sourceFingerprint).filter(Boolean));
+ const selected=drafts.filter(row=>row.selected);
+ for(const row of selected){
+  if(!/^\d{4}-(0[1-9]|1[0-2])-\d{2}$/.test(row.date)||!row.name.trim()||!Number.isFinite(row.amount)||row.amount<0||row.amount>1e9)throw new Error("Bitte Datum, Bezeichnung und Betrag aller ausgewählten Buchungen prüfen.");
+  if(row.kind==="in"&&row.target==="monthlyFixed")throw new Error("Einnahmen können keine Fixkosten sein.");
+ }
+ if(settings.updateFixed&&new Set(selected.map(row=>row.date.slice(0,7))).size>1)throw new Error("Fixkosten bitte mit einem Auszug für einen einzelnen Monat aktualisieren.");
+ const months=new Set(selected.filter(row=>!known.has(row.fingerprint)).map(row=>row.date.slice(0,7)));
+ if(settings.replaceManual)next.expenses=next.expenses.filter(row=>row.sourceFingerprint||!months.has(row.month));
+ if(settings.updateFixed){
+  const fixedFingerprints=new Set(selected.filter(row=>row.target==="monthlyFixed").map(row=>row.fingerprint));
+  next.expenses=next.expenses.filter(row=>!row.sourceFingerprint||!fixedFingerprints.has(row.sourceFingerprint));
+  for(const change of fixedStatementChanges(plan,drafts)){
+   if(change.action==="remove")next.fixed=next.fixed.filter(row=>row.id!==change.id);
+   else if(change.action==="update")next.fixed=next.fixed.map(row=>row.id===change.id?{...row,amount:change.amount}:row);
+   else next.fixed.push({id:newCostId(),name:change.name,amount:change.amount,refund:0,note:change.draft?.note||"",month:change.draft!.date.slice(0,7),sourceFingerprint:change.draft?.fingerprint,sourceFile:filename.slice(0,300)});
   }
-  return {plan:next,count,skipped};
+ }
+ let count=0,skipped=0;
+ for(const draft of selected){
+  const regular=matchingRegular(draft,plan);
+  if(known.has(draft.fingerprint)||(regular&&!draft.keepMonthly)||settings.updateFixed&&draft.target==="monthlyFixed"){skipped++;continue;}
+  next.expenses.push({id:"statement-"+newCostId(),name:draft.name.slice(0,300),amount:draft.amount,refund:0,note:draft.note.slice(0,2000),month:draft.date.slice(0,7),date:draft.date,kind:draft.kind,sourceFingerprint:draft.fingerprint,sourceFile:filename.slice(0,300)});
+  known.add(draft.fingerprint);count++;
+ }
+ return {plan:next,count,skipped};
 }

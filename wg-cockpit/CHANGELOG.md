@@ -1,3 +1,17 @@
+## 0.1.115
+
+- Liest PDF-Kontoauszüge im Add-on statt über einen Browser-Worker und liefert Fehler oder eine Vorschau direkt an das Gerät zurück.
+- Lässt Gehalt und Fixkosten beim Standardimport unverändert und legt zusätzliche Einnahmen und Ausgaben als Monatsbuchungen an.
+- Ergänzt „Fixkosten aktualisieren“ mit einer Vorschau für Ergänzungen, Betragsänderungen und entfernte Posten; standardmäßig deaktiviert.
+- Benennt den Monatsbereich in „Monatsüberblick“ um und ergänzt Einnahmen-/Ausgabenfilter mit passenden neuen Posten.
+- Ergänzt „Vorgeschlagen“ mit Regeln aus den Monatsbuchungen, einstellbaren Rechenbeispielen und einer verlinkten Verbraucherzentrale-Quelle.
+
+## 0.1.114
+
+- Leitet den PDF-Worker in Home Assistant unverändert weiter, damit Kontoauszüge gelesen werden können.
+- Verhindert, dass die Home-Assistant-Weiterleitung JavaScript-Ausdrücke der PDF-Bibliothek als CSS-Adressen verändert.
+- Beendet einen festhängenden PDF-Import nach einer Minute mit einer Fehlermeldung und erlaubt einen erneuten Versuch.
+
 ## 0.1.113
 
 - Öffnet die Kostenrechnung wie bestehende Dashboard-Aktionen direkt innerhalb des aktuellen Home-Assistant-Ingress-Pfads.

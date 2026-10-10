@@ -34,7 +34,7 @@ function upstreamPath(requestUrl, base) {
   return `${parsed.pathname}${parsed.search}`;
 }
 
-function addIngressPrefix(text, base) {
+function addIngressPrefix(text, base, contentType = "text/html") {
   if (!base) return text;
   const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const alreadyPrefixed = new RegExp(`^${escapeRegExp(base)}(?:/|$)`);
@@ -42,10 +42,13 @@ function addIngressPrefix(text, base) {
   const attrs = /((?:href|src|action|poster|data-src)\s*=\s*["'])(\/(?!\/)[^"']*)/gi;
   const quotedRoutes = new RegExp(`(["'\x60])(\\/(?:${routeNames})(?=\\/|[?#"'\x60])[^"'\x60]*)`, "g");
   const cssUrls = /url\(\s*(["']?)(\/(?!\/)[^"')\s]+)\1\s*\)/gi;
-  return text
+  const rewritten = text
     .replace(attrs, (_match, start, path) => `${start}${prefixPath(path)}`)
-    .replace(quotedRoutes, (_match, quote, path) => `${quote}${prefixPath(path)}`)
-    .replace(cssUrls, (_match, quote, path) => `url(${quote}${prefixPath(path)}${quote})`);
+    .replace(quotedRoutes, (_match, quote, path) => `${quote}${prefixPath(path)}`);
+  // JavaScript URL(/regex/) calls are not CSS url(...) references.
+  return /(?:text\/html|text\/css)/i.test(contentType)
+    ? rewritten.replace(cssUrls, (_match, quote, path) => `url(${quote}${prefixPath(path)}${quote})`)
+    : rewritten;
 }
 
 const server = http.createServer((incoming, outgoing) => {
@@ -72,7 +75,10 @@ const server = http.createServer((incoming, outgoing) => {
     headers,
   }, (proxyResponse) => {
     const contentType = String(proxyResponse.headers["content-type"] || "");
-    if (!/(?:text\/|javascript|json)/i.test(contentType)) {
+    // The PDF worker is third-party code, not an app page. Rewriting paths
+    // inside its regex literals corrupts its JavaScript and prevents startup.
+    const isPdfWorker = upstreamPath(incoming.url, base).split("?")[0] === "/cost-pdf.worker.min.mjs";
+    if (isPdfWorker || !/(?:text\/|javascript|json)/i.test(contentType)) {
       outgoing.writeHead(proxyResponse.statusCode || 502, proxyResponse.headers);
       proxyResponse.pipe(outgoing);
       return;
@@ -81,7 +87,7 @@ const server = http.createServer((incoming, outgoing) => {
     const chunks = [];
     proxyResponse.on("data", (chunk) => chunks.push(chunk));
     proxyResponse.on("end", () => {
-      const body = addIngressPrefix(Buffer.concat(chunks).toString("utf8"), base);
+      const body = addIngressPrefix(Buffer.concat(chunks).toString("utf8"), base, contentType);
       const responseHeaders = { ...proxyResponse.headers };
       delete responseHeaders["content-length"];
       delete responseHeaders["transfer-encoding"];

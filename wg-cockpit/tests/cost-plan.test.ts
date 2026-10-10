@@ -22,3 +22,5 @@ test("savings are separated from spending and can be excluded without changing s
  assert.equal(isSavingRow(plan.expenses.find(row=>row.name==="Spar")!),false);plan.fixed[4].isSaving=false;assert.equal(costSummary(plan,"2026-09").savings,325);assert.equal(isCostPlan(plan),true);
 });
 test("deleting all displayed month rows produces zero totals immediately",()=>{const plan=structuredClone(initialCostPlan);plan.income=[];plan.fixed=[];plan.expenses=[];const result=costSummary(plan,"2026-09");assert.equal(result.remaining,0);assert.equal(result.totalOut,0);assert.equal(result.savings,0);});
+
+test("monthly credits count as income, not spending or savings",()=>{const plan=structuredClone(initialCostPlan);plan.expenses.push({id:"credit",name:"Erstattung",amount:50,refund:0,note:"",month:"2026-09",kind:"in",isSaving:true});const result=costSummary(plan,"2026-09");assert.equal(result.income,2377.2);assert.equal(result.expenses,530.17);assert.equal(result.savings,425);assert.equal(result.remaining,209.56);assert.equal(isCostPlan(plan),true)});

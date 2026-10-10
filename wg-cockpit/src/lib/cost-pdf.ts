@@ -1,26 +1,11 @@
-import { parseCostStatement } from "@/domain/cost-statement";
-export async function readCostPdf(file: File) {
-  if(file.size>20*1024*1024)throw new Error("Bitte eine PDF-Datei unter 20 MB auswählen.");
-  const data=new Uint8Array(await file.arrayBuffer());
-  if(new TextDecoder().decode(data.slice(0,5))!=="%PDF-")throw new Error("Die ausgewählte Datei ist keine PDF.");
-  const pdfjs=await import("pdfjs-dist/legacy/build/pdf.mjs");
-  const ingress=window.location.pathname.match(/^(\/api\/hassio_ingress\/[A-Za-z0-9_-]+)/)?.[1]||"";
-  pdfjs.GlobalWorkerOptions.workerSrc=ingress+"/cost-pdf.worker.min.mjs";
-  const task=pdfjs.getDocument({data,useSystemFonts:true});
-  try {
-    const pdf=await task.promise;
-    if(pdf.numPages>100)throw new Error("Bitte einen Kontoauszug mit höchstens 100 Seiten auswählen.");
-    const pages:string[]=[];
-    for(let number=1;number<=pdf.numPages;number++){
-      const page=await pdf.getPage(number),content=await page.getTextContent();
-      const lines:{y:number;items:{x:number;text:string}[]}[]=[];
-      for(const item of content.items){if(!("str" in item)||!item.str.trim())continue;const y=item.transform[5],x=item.transform[4];let line=lines.find(line=>Math.abs(line.y-y)<2);if(!line){line={y,items:[]};lines.push(line)}line.items.push({x,text:item.str})}
-      pages.push(lines.sort((a,b)=>b.y-a.y).map(line=>line.items.sort((a,b)=>a.x-b.x).map(item=>item.text).join(" ")).join("\n"));
-      page.cleanup();
-    }
-    return parseCostStatement(pages.join("\n"));
-  } catch(error) {
-    if(error instanceof Error&&error.name==="PasswordException")throw new Error("Diese PDF ist passwortgeschützt. Bitte einen ungeschützten Kontoauszug exportieren.");
-    throw error;
-  } finally {await task.destroy();}
+import type { CostStatement } from "@/domain/cost-statement";
+export async function readCostPdf(file:File,token:string){
+ if(file.size>20*1024*1024)throw new Error("Bitte eine PDF-Datei unter 20 MB auswählen.");
+ const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),60000);
+ try{
+  const response=await fetch("/api/kostenrechnung/import",{method:"POST",headers:{Authorization:"Bearer "+token,"Content-Type":"application/pdf"},body:file,signal:controller.signal});
+  if(!(response.headers.get("content-type")||"").includes("application/json"))throw new Error("Das Add-on konnte den Import nicht beantworten. Bitte Add-on-Version und Verbindung prüfen.");
+  const result=await response.json();if(!response.ok)throw new Error(result.error||"Die PDF konnte nicht gelesen werden.");return result as CostStatement;
+ }catch(error){if(controller.signal.aborted)throw new Error("Der Import dauert zu lange. Bitte Verbindung prüfen und erneut versuchen.");throw error}
+ finally{clearTimeout(timer)}
 }
