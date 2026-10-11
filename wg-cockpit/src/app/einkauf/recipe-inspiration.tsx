@@ -8,7 +8,9 @@ import { triggerHaptic } from "@/lib/haptics";
 import { localizeRecipeAmount, localizeRecipeIngredient, localizeRecipeIngredientMentions, normalizeRecipeShoppingQuantity } from "@/lib/recipe-localization";
 import {recipeCourse} from "@/lib/recipe-course";
 import {chooseRecipeSuggestions,recipeSelectionKey} from "@/lib/recipe-selection";
-import { containsSeafood, RECIPE_POLICY_VERSION } from "@/lib/recipe-policy";
+import {scaleRecipeAmount,scaleRecipeStep} from "@/lib/recipe-portions";
+import {recommendationTerms,recommendationScore,type ShoppingSignal} from "@/lib/recipe-recommendations";
+import { containsSeafood, hasEnglishRecipeWords, RECIPE_POLICY_VERSION } from "@/lib/recipe-policy";
 import { matchProductIcon } from "./product-icons";
 
 export type RecipeShoppingItem = { id: string; name: string; cat: string; icon: string; qty: string; note?: string; priority?: "Nichts" | "Dringend" | "Wenn's passt" | "Angebot" | "Normal" | ("Nichts" | "Dringend" | "Wenn's passt" | "Angebot")[]; favorite?: boolean; source?:"recipe"|"offer"|"search"; repeatStep?:string };
@@ -17,7 +19,7 @@ type Recipe = { id: string; name: string; image: string; category: string; area:
 type Offer = { id: string; title: string; unit: string; price: number; oldPrice: number | null; image: string | null; url: string | null; store: string; storeName: string; discount: number | null; condition: string | null };
 type OfferResponse = { offers?: Offer[] };
 type Props = { items: RecipeShoppingItem[]; setItems: Dispatch<SetStateAction<RecipeShoppingItem[]>>; layout: "tiles" | "list"; onBack?: () => void; onShowProspects?: () => void; embedded?: boolean; active?: boolean };
-const tabs = ["Entdecken", "Saison", "Tageszeit", "Desserts & Kuchen", "Meine Rezepte", "Favoriten", "Zur Liste hinzugefügt"] as const;
+const tabs = ["Entdecken", "Empfohlen", "Saison", "Tageszeit", "Desserts & Kuchen", "Meine Rezepte", "Favoriten", "Zur Liste hinzugefügt"] as const;
 type RecipeTab = typeof tabs[number];
 const suggestionCount=9;
 const pantryWords = ["butter", "kaffee", "wasser", "öl", "oel", "salz", "pfeffer", "zucker", "mehl", "gewürz", "gewuerz", "essig"];
@@ -25,7 +27,7 @@ const icons: [string[], string][] = [[ ["tomat"], "🍅"], [["potato", "kartoffe
 function normalizeIngredientName(raw:string){return localizeRecipeIngredient(raw).name}
 function iconFor(name: string) { const known=matchProductIcon(normalizeIngredientName(name));if(known)return known.emoji;const needle = normalizeIngredientName(name).toLocaleLowerCase("de"); return icons.find(entry => entry[0].some(word => needle.includes(word)))?.[1] ?? "🥣"; }
 function categoryFor(name: string) { const n = name.toLocaleLowerCase("de"); if (/milch|butter|käse|cheese|cream|sahne|obers|yogurt|joghurt/.test(n)) return "Milchprodukte"; if (/tomat|potato|kartoffel|zwiebel|onion|karotte|carrot|gemüse|broccoli|kohl|salat/.test(n)) return "Obst & Gemüse"; if (/chicken|huhn|fleisch|beef|fish|fisch|lachs/.test(n)) return "Fleisch & Fisch"; if (/rice|reis|pasta|nudel/.test(n)) return "Nudeln & Reis"; if (/bread|brot|mehl/.test(n)) return "Backwaren"; return "Sonstiges"; }
-function scaledAmount(raw: string, factor: number) { const match = raw.trim().match(/^((?:\d+\s+)?\d+\/\d+|\d+(?:[.,]\d+)?)(\s*)(.*)$/); if (!match) return localizeRecipeAmount(raw); if (factor === 1) return `${match[1]}${match[2]}${localizeRecipeAmount(match[3])}`; const source = match[1].trim().split(/\s+/); const last = source.pop()!; let fraction: number; if (last.includes("/")) { const [numerator, denominator] = last.split("/"); fraction = Number(numerator) / Number(denominator); } else fraction = Number(last.replace(",", ".")); const value = ((Number(source[0]) || 0) + fraction) * factor; const amount = Number.isInteger(value) ? `${value}` : value.toLocaleString("de-AT", { maximumFractionDigits: 2 }); return `${amount}${match[2]}${localizeRecipeAmount(match[3])}`; }
+function scaledAmount(raw:string,factor:number){return localizeRecipeAmount(scaleRecipeAmount(raw,factor))}
 function mergedQuantity(oldValue: string, nextValue: string) { const pattern = /^(\d+(?:[.,]\d+)?)\s*(.*)$/; const oldMatch = oldValue.match(pattern); const newMatch = nextValue.match(pattern); if (oldMatch && newMatch && oldMatch[2].trim().toLocaleLowerCase("de") === newMatch[2].trim().toLocaleLowerCase("de")) { const total = Number(oldMatch[1].replace(",", ".")) + Number(newMatch[1].replace(",", ".")); return `${Number.isInteger(total) ? total : total.toLocaleString("de-AT", { maximumFractionDigits: 2 })}${oldMatch[2] ? ` ${oldMatch[2].trim()}` : ""}`; } return oldValue && nextValue ? `${oldValue} + ${nextValue}` : oldValue || nextValue; }
 function pantryDefault(name: string) { const value = name.toLocaleLowerCase("de"); return !pantryWords.some(word => value.includes(word)); }
 function stepIcon(step:string){const value=step.toLocaleLowerCase("de");if(/ofen|back|vorheiz/.test(value))return "🔥";if(/koch|köchel|sied|wasser/.test(value))return "🍲";if(/schneid|hack|würfel|raspel/.test(value))return "🔪";if(/brat|pfanne|anbrat/.test(value))return "🍳";if(/rühr|misch|vermeng|verquirl/.test(value))return "🥣";if(/servier|anricht/.test(value))return "🍽️";return "👩‍🍳";}
@@ -42,11 +44,16 @@ export function RecipeInspiration({ items, setItems, layout, onBack, onShowProsp
   const [favoriteIds, setFavoriteIds, favoritesReady] = useHouseholdState<string[]>("recipeFavorites", []);
   const [usedCounts, setUsedCounts, countsReady] = useHouseholdState<Record<string, number>>("recipeUseCounts", {});
   const [addedRecipeIds, setAddedRecipeIds, addedReady] = useHouseholdState<string[]>("addedRecipeIds", []);
+  const [shoppingHistory,setShoppingHistory,historyReady]=useHouseholdState<ShoppingSignal[]>("recipeShoppingHistory",[]);
+  const [bookings]=useHouseholdState<{id:number;purchase?:{items:{name:string}[]}}[]>("bookings",[]);
+  const observedItems=useRef<Map<string,string>|null>(null);
+  const recommendedTerms=useMemo(()=>recommendationTerms(items,shoppingHistory,bookings),[items,shoppingHistory,bookings]);
   const [preferences] = useHouseholdState<{ shoppingHaptics?: boolean }>("preferences", {});
   const [offers, setOffers] = useState<Offer[]>([]);
   const [search, setSearch] = useState("");
   const [visibleRecipes, setVisibleRecipes] = useState<Recipe[]>([]);
   const [dessertRecipes,setDessertRecipes]=useState<Recipe[]>([]);
+  const [recommendedRecipes,setRecommendedRecipes]=useState<Recipe[]>([]);
   const [seasonRecipes,setSeasonRecipes]=useState<Recipe[]>([]);
   const [timeRecipes,setTimeRecipes]=useState<Recipe[]>([]);
   const [daypartKey,setDaypartKey]=useState(()=>timeOfDayTheme().key);
@@ -73,6 +80,17 @@ export function RecipeInspiration({ items, setItems, layout, onBack, onShowProsp
   const [pullRefreshing,setPullRefreshing]=useState(false);
   const pullInProgress=useRef(false);
   const recipesMounted=recipesReady&&ownReady&&favoritesReady&&countsReady&&addedReady;
+  useEffect(()=>{
+    if(!historyReady)return;
+    const previous=observedItems.current;
+    const changed=items.filter(item=>!previous||previous.get(item.id)!==`${item.name}|${item.qty}`);
+    observedItems.current=new Map(items.map(item=>[item.id,`${item.name}|${item.qty}`]));
+    if(!changed.length)return;
+    const now=Date.now();setShoppingHistory(current=>{
+      const additions=changed.filter(item=>previous||!current.some(entry=>entry.name===item.name)).map(item=>({id:`${item.id}-${now}`,name:item.name,addedAt:now}));
+      return [...additions,...current].sort((a,b)=>b.addedAt-a.addedAt).slice(0,100);
+    });
+  },[items,historyReady,setShoppingHistory]);
   const pullRefreshAction=useRef<()=>Promise<void>>(async()=>{});
   function haptic() { triggerHaptic(preferences.shoppingHaptics !== false); }
 
@@ -113,16 +131,32 @@ export function RecipeInspiration({ items, setItems, layout, onBack, onShowProsp
     }catch(cause){if(request===searchRequest.current)setError(cause instanceof Error?cause.message:"Desserts konnten nicht geladen werden.")}finally{if(request===searchRequest.current)setBusy(false)}
   }
   const updatePullDistance=(value:number)=>{pullDistanceRef.current=value;setPullDistance(value)};
+  async function loadRecommendedRecipes(fresh=false){
+    const excluded=refreshExclusions("Empfohlen",recommendedRecipes,fresh);const request=++searchRequest.current;setBusy(true);setError("");
+    try{
+      const queries=[...recommendedTerms.slice(0,3),""];
+      const results=await Promise.allSettled(queries.map(async query=>{
+        const params=new URLSearchParams({limit:String(suggestionCount)});if(query)params.set("q",query);if(fresh)params.set("fresh","1");if(excluded.size)params.set("exclude",[...excluded].join(","));
+        const response=await fetch(`/api/recipes?${params}`,{cache:"no-store",signal:AbortSignal.timeout(60000)});if(!response.ok)throw new Error("Rezeptquelle nicht erreichbar");return await response.json() as {recipes?:Recipe[]};
+      }));
+      if(request!==searchRequest.current)return;
+      const candidates=results.flatMap(result=>result.status==="fulfilled"?result.value.recipes??[]:[]).filter(recipe=>recipe.image&&recipe.policyVersion===RECIPE_POLICY_VERSION&&!containsSeafood(recipe));
+      const found=chooseRecipeSuggestions(candidates.sort((a,b)=>recommendationScore(b,recommendedTerms)-recommendationScore(a,recommendedTerms)),suggestionCount,excluded);
+      if(found.length||!fresh)setRecommendedRecipes(found);if(found.length)setRecipes(current=>[...new Map([...current,...found].map(recipe=>[recipe.id,recipe])).values()]);
+      if(!found.length)setError("Gerade sind keine empfohlenen Rezepte erreichbar.");
+    }catch(cause){if(request===searchRequest.current)setError(cause instanceof Error?cause.message:"Empfehlungen konnten nicht geladen werden.")}finally{if(request===searchRequest.current)setBusy(false)}
+  }
   pullRefreshAction.current=async()=>{
     if(busy||pullInProgress.current)return;
     pullInProgress.current=true;haptic();setPullRefreshing(true);updatePullDistance(62);const started=Date.now();
     try{
       if(searchTimer.current){clearTimeout(searchTimer.current);searchTimer.current=null}
-      if(tab==="Desserts & Kuchen")await loadDessertRecipes(true);
+      if(tab==="Empfohlen")await loadRecommendedRecipes(true);
+      else if(tab==="Desserts & Kuchen")await loadDessertRecipes(true);
       else if(tab==="Saison")await loadSeasonRecipes(true);
       else if(tab==="Tageszeit")await loadTimeRecipes(true);
       else if(tab==="Entdecken")await loadRecipes(search.trim(),true);
-      else await refreshHouseholdState();
+      else {checkedSaved.current.clear();await refreshHouseholdState()}
     }finally{
       await new Promise(resolve=>setTimeout(resolve,Math.max(0,550-(Date.now()-started))));
       updatePullDistance(0);setPullRefreshing(false);pullInProgress.current=false;
@@ -163,26 +197,37 @@ export function RecipeInspiration({ items, setItems, layout, onBack, onShowProsp
   const checkedSaved=useRef(new Set<string>());
   useEffect(()=>{
     if(!active||!recipesReady||!favoritesReady||!addedReady)return;
-    const pending=recipes.filter(recipe=>!recipe.own&&recipe.policyVersion!==RECIPE_POLICY_VERSION&&(favoriteIds.includes(recipe.id)||addedRecipeIds.includes(recipe.id))&&!checkedSaved.current.has(recipe.id));
-    for(const recipe of pending){
-      checkedSaved.current.add(recipe.id);
-      void fetch(`/api/recipes?id=${encodeURIComponent(recipe.id)}`,{cache:"no-store",signal:AbortSignal.timeout(60000)}).then(async response=>{
+    const savedIds=[...new Set([...favoriteIds,...addedRecipeIds])];
+    const pending=savedIds.filter(id=>!checkedSaved.current.has(id)&&!ownRecipes.some(recipe=>recipe.id===id)&&!recipes.some(recipe=>recipe.id===id&&recipe.detailsLoaded&&recipe.policyVersion===RECIPE_POLICY_VERSION&&!containsSeafood(recipe)));
+    for(const id of pending){
+      checkedSaved.current.add(id);
+      void fetch(`/api/recipes?id=${encodeURIComponent(id)}`,{cache:"no-store",signal:AbortSignal.timeout(60000)}).then(async response=>{
         if(!response.ok)return;const data=await response.json() as {recipe?:Recipe};const detail=data.recipe;
         if(detail?.policyVersion===RECIPE_POLICY_VERSION&&!containsSeafood(detail))setRecipes(current=>[...current.filter(entry=>entry.id!==detail.id),detail]);
-      }).catch(()=>{checkedSaved.current.delete(recipe.id)});
+      }).catch(()=>{});
     }
-  },[active,recipesReady,favoritesReady,addedReady,recipes,favoriteIds,addedRecipeIds,setRecipes]);
+  },[active,recipesReady,favoritesReady,addedReady,recipes,ownRecipes,favoriteIds,addedRecipeIds,setRecipes]);
 
-  const allRecipes = useMemo(() => [...new Map([...recipes, ...visibleRecipes, ...ownRecipes].filter(recipe=>!containsSeafood(recipe)&&(recipe.own||recipe.policyVersion===RECIPE_POLICY_VERSION)).map(recipe => [recipe.id, recipe])).values()], [ownRecipes, recipes, visibleRecipes]);
+  const allRecipes = useMemo(() => {
+    const savedIds=new Set([...favoriteIds,...addedRecipeIds]);
+    const library=new Map<string,Recipe>([...recipes,...visibleRecipes,...ownRecipes].flatMap<[string,Recipe]>(recipe=>{
+      if(!containsSeafood(recipe)&&(recipe.own||recipe.policyVersion===RECIPE_POLICY_VERSION))return [[recipe.id,recipe]];
+      if(!savedIds.has(recipe.id))return [];
+      return [[recipe.id,{...recipe,name:!containsSeafood(recipe)&&!hasEnglishRecipeWords(recipe.name)?recipe.name:"Gespeichertes Rezept",description:"Gespeichert – Rezeptdetails werden beim Öffnen geprüft.",category:"",area:"",ingredients:[],instructions:[],detailsLoaded:false,policyVersion:undefined}]];
+    }));
+    for(const id of savedIds)if(!library.has(id))library.set(id,{id,name:"Gespeichertes Rezept",image:"",category:"",area:"",ingredients:[],instructions:[],source:""});
+    return [...library.values()];
+  }, [ownRecipes, recipes, visibleRecipes,favoriteIds,addedRecipeIds]);
   const shown = useMemo(() => {
     if (tab === "Meine Rezepte") return allRecipes.filter(recipe=>recipe.own);
     if (tab === "Zur Liste hinzugefügt") return allRecipes.filter(recipe => addedRecipeIds.includes(recipe.id));
     if (tab === "Favoriten") return allRecipes.filter(recipe => favoriteIds.includes(recipe.id));
+    if (tab === "Empfohlen") return recommendedRecipes.slice(0,suggestionCount);
     if (tab === "Desserts & Kuchen") return dessertRecipes.filter(recipe=>recipe.policyVersion===RECIPE_POLICY_VERSION&&!containsSeafood(recipe)&&recipeCourse(recipe)==="dessert").slice(0,suggestionCount);
     if (tab === "Saison") return seasonRecipes.filter(recipe=>recipe.policyVersion===RECIPE_POLICY_VERSION&&!containsSeafood(recipe)).slice(0,suggestionCount);
     if (tab === "Tageszeit") return timeRecipes.filter(recipe=>recipe.policyVersion===RECIPE_POLICY_VERSION&&!containsSeafood(recipe)).slice(0,suggestionCount);
     return visibleRecipes.filter(recipe=>recipe.policyVersion===RECIPE_POLICY_VERSION&&!containsSeafood(recipe)&&recipeCourse(recipe)==="main").slice(0,suggestionCount);
-  }, [addedRecipeIds, allRecipes, favoriteIds, ownRecipes, seasonRecipes, dessertRecipes, tab, timeRecipes, visibleRecipes]);
+  }, [addedRecipeIds, allRecipes, favoriteIds, ownRecipes, seasonRecipes, dessertRecipes, recommendedRecipes,tab, timeRecipes, visibleRecipes]);
 
   async function openRecipe(recipe: Recipe) {
     haptic();
@@ -227,7 +272,7 @@ export function RecipeInspiration({ items, setItems, layout, onBack, onShowProsp
     setSelected(null);
   }
   function finishRecipe(recipe:Recipe){haptic();setAddedRecipeIds(current=>current.filter(id=>id!==recipe.id))}
-  function toggleFavorite(recipe: Recipe) { haptic(); setFavoriteIds(current => current.includes(recipe.id) ? current.filter(id => id !== recipe.id) : [recipe.id, ...current]); }
+  function toggleFavorite(recipe: Recipe) { haptic();if(!favoriteIds.includes(recipe.id))setRecipes(current=>[...current.filter(entry=>entry.id!==recipe.id),recipe]);setFavoriteIds(current => current.includes(recipe.id) ? current.filter(id => id !== recipe.id) : [recipe.id, ...current]); }
   function saveOwnRecipe() {
     const name = recipeName.trim();
     const ingredients = recipeIngredients.split(/\r?\n/).map(line => line.trim()).filter(Boolean).map(line => {
@@ -247,10 +292,11 @@ export function RecipeInspiration({ items, setItems, layout, onBack, onShowProsp
   const content=<section ref={recipeRoot} className={`recipe-module ${embedded?"recipe-embedded":"recipe-fullscreen"}`} aria-label="Rezepte und Inspiration">
     <div className={`recipe-pull-refresh ${pullRefreshing?"is-refreshing":""}`} style={{height:`${pullDistance}px`}} aria-live="polite" aria-label={pullRefreshing?"Rezepte werden aktualisiert":"Zum Aktualisieren nach unten ziehen"}><RotateCw size={19} style={pullRefreshing?undefined:{transform:`rotate(${pullDistance*4}deg)`}}/><span>{pullRefreshing?"Neue Rezepte werden geladen …":"Loslassen zum Aktualisieren"}</span></div>
     <div className="recipe-module-heading"><div><span><ChefHat size={15}/> Rezepte & Inspiration</span><h3>Was kochen wir heute?</h3></div><div>{!embedded&&<button className="recipe-back-button" onClick={onBack}><ArrowLeft size={15}/> Einkaufsliste</button>}<button className="recipe-create-button" onClick={() => setCreateOpen(true)}><Plus size={16}/> Eigenes Rezept</button></div></div>
-    <div className="recipe-tabs" role="tablist">{tabs.map(value => <button key={value} role="tab" aria-selected={tab === value} className={tab === value ? "active" : ""} onClick={() => {setTab(value);if(value==="Saison")void loadSeasonRecipes();if(value==="Desserts & Kuchen")void loadDessertRecipes()}}>{value}{value === "Favoriten" && favoriteIds.length > 0 ? ` · ${favoriteIds.length}` : ""}</button>)}</div>
+    <div className="recipe-tabs" role="tablist">{tabs.map(value => <button key={value} role="tab" aria-selected={tab === value} className={tab === value ? "active" : ""} onClick={() => {setTab(value);if(value==="Empfohlen")void loadRecommendedRecipes();if(value==="Saison")void loadSeasonRecipes();if(value==="Desserts & Kuchen")void loadDessertRecipes()}}>{value}{value === "Favoriten" && favoriteIds.length > 0 ? ` · ${favoriteIds.length}` : ""}</button>)}</div>
     {tab === "Entdecken" && <div className="recipe-search-row"><form className="recipe-search" onSubmit={event=>event.preventDefault()}><Search size={16}/><input value={search} onChange={event => {const value=event.target.value;setSearch(value);if(searchTimer.current)clearTimeout(searchTimer.current);if(value.trim().length>=2)searchTimer.current=setTimeout(()=>void loadRecipes(value.trim()),450);else if(!value.trim())void loadRecipes()}} placeholder="Gericht auf Deutsch suchen, z. B. Gulasch oder Auflauf"/></form><button type="button" className="recipe-search-refresh" onClick={()=>{haptic();if(searchTimer.current)clearTimeout(searchTimer.current);void loadRecipes(search.trim(),true)}} aria-label="Neun Rezeptvorschläge neu laden" title="Vorschläge neu laden"><RotateCw size={16}/></button></div>}
     {tab!=="Entdecken"&&<button type="button" className="recipe-search-refresh recipe-tab-refresh" disabled={busy||pullRefreshing} onClick={()=>void pullRefreshAction.current()} aria-label={`${tab} aktualisieren`} title="Aktualisieren"><RotateCw size={16}/></button>}
     {tab==="Entdecken"&&search.trim()&&!busy&&visibleRecipes.length>0&&<p className="recipe-subtitle">{shown.length} passende Rezepte aus mehreren Quellen gefunden.</p>}
+    {tab === "Empfohlen" && <p className="recipe-subtitle">{recommendedTerms.length?`Passend zu euren letzten Einkäufen und Listenartikeln: ${recommendedTerms.slice(0,3).join(", ")}.`:"Noch keine Einkaufshistorie vorhanden – hier findet ihr zunächst neun allgemeine Ideen."}</p>}
     {tab === "Desserts & Kuchen" && <p className="recipe-subtitle">Neun süße Ideen: Desserts, Kuchen und Gebäck.</p>}
     {tab === "Saison" && <p className="recipe-subtitle">{seasonalTheme().label}: passende Rezeptideen für die aktuelle Jahreszeit.</p>}
     {tab === "Tageszeit" && <p className="recipe-subtitle">{timeOfDayTheme().label}: neun Vorschläge passend zur aktuellen Uhrzeit.</p>}
@@ -262,9 +308,9 @@ export function RecipeInspiration({ items, setItems, layout, onBack, onShowProsp
     {busy && shown.length > 0 && <small className="recipe-loading-note">Weitere Rezepte werden geladen …</small>}
     <small className="recipe-source-credit">Rezeptsuche: <a href="https://www.gutekueche.at/" target="_blank" rel="noreferrer">GuteKueche Österreich</a>, <a href="https://www.gutekueche.de/" target="_blank" rel="noreferrer">GuteKueche Deutschland</a>, <a href="https://www.lecker.de/" target="_blank" rel="noreferrer">LECKER</a>, <a href="https://emmikochteinfach.de/" target="_blank" rel="noreferrer">Emmi kocht einfach</a> und <a href="https://www.einfachkochen.de/" target="_blank" rel="noreferrer">Einfach Kochen</a>; ergänzt durch <a href="https://www.themealdb.com/" target="_blank" rel="noreferrer">TheMealDB</a> und <a href="https://recipes.cooklang.org/about" target="_blank" rel="noreferrer">Cooklang Federation</a>. Rezepte öffnen die jeweilige Originalquelle.</small>
 
-    {selected && <div className="recipe-detail-scrim" onMouseDown={event => { if (event.target === event.currentTarget) setSelected(null); }}><section className="recipe-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="recipe-detail-title"><header className="recipe-detail-header"><div><small>{selected.own ? "Eigenes WG-Rezept" : [selected.area, selected.category].filter(Boolean).join(" · ")}</small><h3 id="recipe-detail-title">{selected.name}</h3></div><button className="sheet-close" onClick={() => setSelected(null)} aria-label="Schließen"><X size={18}/></button></header><div className="recipe-detail-scroll">{<RecipePhoto src={selected.image} alt={selected.name} detail/>}{selected.description&&<p className="recipe-detail-description">{selected.description}</p>} {detailBusy&&<p className="recipe-detail-loading">Rezept, Zutaten und Schritte werden geladen …</p>}{detailError&&<p className="recipe-detail-error">{detailError}</p>}<div className="recipe-portions"><span><Users size={16}/> Portionen <b>{servings}</b></span><div><button onClick={() => {haptic();setServings(value => Math.max(1, value - 1))}} aria-label="Portionen verringern"><Minus size={15}/></button><button onClick={() => {haptic();setServings(value => Math.min(20, value + 1))}} aria-label="Portionen erhöhen"><Plus size={15}/></button></div></div>{(()=>{const pantry=selected.ingredients.map((ingredient,index)=>({ingredient,index})).filter(({ingredient})=>pantryWords.some(word=>ingredient.name.toLocaleLowerCase("de").includes(word)));const regular=selected.ingredients.map((ingredient,index)=>({ingredient,index})).filter(({ingredient})=>!pantryWords.some(word=>ingredient.name.toLocaleLowerCase("de").includes(word)));const renderIngredient=({ingredient,index}:{ingredient:RecipeIngredient;index:number})=>{const key=`${selected.id}:${index}`;const checked=selectedIngredients.includes(key);const offer=isOffer(ingredient.name);return <button type="button" key={key} aria-pressed={checked} className={`recipe-ingredient ${checked?"selected":""}`} onClick={()=>toggleIngredient(key)}><span className="recipe-ingredient-icon">{iconFor(ingredient.name)}</span><span className="recipe-ingredient-copy"><b>{ingredient.name}</b>{ingredient.hint&&<small>{ingredient.hint}</small>}{offer&&<small className="recipe-ingredient-offer">Im Angebot: {offer.price.toLocaleString("de-AT",{style:"currency",currency:"EUR"})} · {offer.storeName}</small>}</span><span className="recipe-ingredient-amount">{scaledAmount(ingredient.amount,servings/Math.max(1,selected.portions??4))}</span>{checked&&<Check className="recipe-ingredient-check" size={16}/>}</button>};return <><div className="recipe-ingredient-heading"><h4>Zutaten auswählen</h4><small>Grau = bleibt weg · antippen zum Hinzufügen</small></div><div className={`recipe-ingredients ${layout==="list"?"recipe-ingredients-list":""}`}>{regular.map(renderIngredient)}</div>{pantry.length>0&&<><div className="recipe-ingredient-heading recipe-pantry-heading"><h4>🏡 Könntest du schon haben</h4><small>Vorrat ist zuerst abgewählt</small></div><div className={`recipe-ingredients recipe-pantry-ingredients ${layout==="list"?"recipe-ingredients-list":""}`}>{pantry.map(renderIngredient)}</div></>}</>})()}{selected.instructions.length>0&&<button type="button" className="recipe-instructions-open" onClick={()=>{haptic();setInstructionsOpen(true)}}><BookOpen size={16}/><span><b>Zubereitung ansehen</b><small>{selected.instructions.length} übersichtliche Schritte</small></span><ArrowLeft size={15}/></button>}{selected.source&&<a className="recipe-original-link" href={selected.source} target="_blank" rel="noreferrer">Originalrezept ansehen <BookOpen size={14}/></a>}<small className="recipe-portion-hint">Mengen werden proportional auf die gewählte Portionszahl angepasst.</small></div><footer className="recipe-detail-footer"><span>{detailBusy?"Rezept wird geladen …":`${selectedIngredients.length} von ${selected.ingredients.length} ausgewählt`}</span><button className="recipe-add-button" disabled={detailBusy||Boolean(detailError)||!selectedIngredients.length} onClick={addSelected}><ShoppingBasket size={17}/> {detailBusy?"Lädt …":`${selectedIngredients.length} Zutaten zur Einkaufsliste`}</button></footer></section></div>}
+    {selected && <div className="recipe-detail-scrim" onMouseDown={event => { if (event.target === event.currentTarget) setSelected(null); }}><section className="recipe-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="recipe-detail-title"><header className="recipe-detail-header"><button type="button" className={`recipe-detail-heart ${favoriteIds.includes(selected.id)?"active":""}`} onClick={()=>toggleFavorite(selected)} aria-label={favoriteIds.includes(selected.id)?"Rezept aus Favoriten entfernen":"Rezept als Favorit speichern"} aria-pressed={favoriteIds.includes(selected.id)} disabled={detailBusy||Boolean(detailError)}><Heart size={18} fill={favoriteIds.includes(selected.id)?"currentColor":"none"}/></button><div><small>{selected.own ? "Eigenes WG-Rezept" : [selected.area, selected.category].filter(Boolean).join(" · ")}</small><h3 id="recipe-detail-title">{selected.name}</h3></div><button className="sheet-close" onClick={() => setSelected(null)} aria-label="Schließen"><X size={18}/></button></header><div className="recipe-detail-scroll">{<RecipePhoto src={selected.image} alt={selected.name} detail/>}{selected.description&&<p className="recipe-detail-description">{selected.description}</p>} {detailBusy&&<p className="recipe-detail-loading">Rezept, Zutaten und Schritte werden geladen …</p>}{detailError&&<p className="recipe-detail-error">{detailError}</p>}<div className="recipe-portions"><span><Users size={16}/> Portionen <b>{servings}</b></span><div><button onClick={() => {haptic();setServings(value => Math.max(1, value - 1))}} aria-label="Portionen verringern"><Minus size={15}/></button><button onClick={() => {haptic();setServings(value => Math.min(20, value + 1))}} aria-label="Portionen erhöhen"><Plus size={15}/></button></div></div>{(()=>{const pantry=selected.ingredients.map((ingredient,index)=>({ingredient,index})).filter(({ingredient})=>pantryWords.some(word=>ingredient.name.toLocaleLowerCase("de").includes(word)));const regular=selected.ingredients.map((ingredient,index)=>({ingredient,index})).filter(({ingredient})=>!pantryWords.some(word=>ingredient.name.toLocaleLowerCase("de").includes(word)));const renderIngredient=({ingredient,index}:{ingredient:RecipeIngredient;index:number})=>{const key=`${selected.id}:${index}`;const checked=selectedIngredients.includes(key);const offer=isOffer(ingredient.name);return <button type="button" key={key} aria-pressed={checked} className={`recipe-ingredient ${checked?"selected":""}`} onClick={()=>toggleIngredient(key)}><span className="recipe-ingredient-icon">{iconFor(ingredient.name)}</span><span className="recipe-ingredient-copy"><b>{ingredient.name}</b>{ingredient.hint&&<small>{ingredient.hint}</small>}{offer&&<small className="recipe-ingredient-offer">Im Angebot: {offer.price.toLocaleString("de-AT",{style:"currency",currency:"EUR"})} · {offer.storeName}</small>}</span><span className="recipe-ingredient-amount">{scaledAmount(ingredient.amount,servings/Math.max(1,selected.portions??4))}</span>{checked&&<Check className="recipe-ingredient-check" size={16}/>}</button>};return <><div className="recipe-ingredient-heading"><h4>Zutaten auswählen</h4><small>Grau = bleibt weg · antippen zum Hinzufügen</small></div><div className={`recipe-ingredients ${layout==="list"?"recipe-ingredients-list":""}`}>{regular.map(renderIngredient)}</div>{pantry.length>0&&<><div className="recipe-ingredient-heading recipe-pantry-heading"><h4>🏡 Könntest du schon haben</h4><small>Vorrat ist zuerst abgewählt</small></div><div className={`recipe-ingredients recipe-pantry-ingredients ${layout==="list"?"recipe-ingredients-list":""}`}>{pantry.map(renderIngredient)}</div></>}</>})()}{selected.instructions.length>0&&<button type="button" className="recipe-instructions-open" onClick={()=>{haptic();setInstructionsOpen(true)}}><BookOpen size={16}/><span><b>Zubereitung ansehen</b><small>{selected.instructions.length} übersichtliche Schritte</small></span><ArrowLeft size={15}/></button>}{selected.source&&<a className="recipe-original-link" href={selected.source} target="_blank" rel="noreferrer">Originalrezept ansehen <BookOpen size={14}/></a>}<small className="recipe-portion-hint">Mengen werden proportional auf die gewählte Portionszahl angepasst.</small></div><footer className="recipe-detail-footer"><span>{detailBusy?"Rezept wird geladen …":`${selectedIngredients.length} von ${selected.ingredients.length} ausgewählt`}</span><button className="recipe-add-button" disabled={detailBusy||Boolean(detailError)||!selectedIngredients.length} onClick={addSelected}><ShoppingBasket size={17}/> {detailBusy?"Lädt …":`${selectedIngredients.length} Zutaten zur Einkaufsliste`}</button></footer></section></div>}
 
-    {instructionsOpen&&selected&&createPortal(<div className="recipe-instructions-scrim" onMouseDown={event=>{if(event.target===event.currentTarget)setInstructionsOpen(false)}}><section className="recipe-instructions-dialog" role="dialog" aria-modal="true" aria-labelledby="recipe-instructions-title"><header><div><small>Schritt für Schritt</small><h2 id="recipe-instructions-title">{selected.name}</h2></div><button className="sheet-close" onClick={()=>setInstructionsOpen(false)} aria-label="Schließen"><X size={19}/></button></header><div className="recipe-instructions-content"><ol>{selected.instructions.map((step,index)=><li key={`${selected.id}-step-${index}`}><span className="recipe-step-number">{index+1}</span><div><span className="recipe-instruction-icon">{stepIcon(step)}</span><p>{instructionParts(step,selected.ingredients).map((part,partIndex)=>part.bold?<strong key={`${part.text}-${partIndex}`}>{part.text}</strong>:<span key={`${part.text}-${partIndex}`}>{part.text}</span>)}</p></div></li>)}</ol></div><footer><button className="recipe-add-button" onClick={()=>setInstructionsOpen(false)}>Fertig</button></footer></section></div>,document.body)}
+    {instructionsOpen&&selected&&createPortal(<div className="recipe-instructions-scrim" onMouseDown={event=>{if(event.target===event.currentTarget)setInstructionsOpen(false)}}><section className="recipe-instructions-dialog" role="dialog" aria-modal="true" aria-labelledby="recipe-instructions-title"><header><div><small>Schritt für Schritt · {servings} Portionen</small><h2 id="recipe-instructions-title">{selected.name}</h2></div><button className="sheet-close" onClick={()=>setInstructionsOpen(false)} aria-label="Schließen"><X size={19}/></button></header><div className="recipe-instructions-content"><ol>{selected.instructions.map((step,index)=><li key={`${selected.id}-step-${index}`}><span className="recipe-step-number">{index+1}</span><div><span className="recipe-instruction-icon">{stepIcon(step)}</span><p>{instructionParts(scaleRecipeStep(step,servings/Math.max(1,selected.portions??4)),selected.ingredients).map((part,partIndex)=>part.bold?<strong key={`${part.text}-${partIndex}`}>{part.text}</strong>:<span key={`${part.text}-${partIndex}`}>{part.text}</span>)}</p></div></li>)}</ol></div><footer><div className="recipe-step-portions"><button type="button" onClick={()=>setServings(value=>Math.max(1,value-1))} aria-label="Portionen in Zubereitung verringern"><Minus size={16}/></button><span>{servings} Portionen</span><button type="button" onClick={()=>setServings(value=>Math.min(20,value+1))} aria-label="Portionen in Zubereitung erhöhen"><Plus size={16}/></button></div><button className="recipe-add-button" onClick={()=>setInstructionsOpen(false)}>Fertig</button></footer></section></div>,document.body)}
     {createOpen && createPortal(<div className="recipe-detail-scrim" onMouseDown={event => { if (event.target === event.currentTarget) setCreateOpen(false); }}><section className="recipe-create-dialog" role="dialog" aria-modal="true" aria-labelledby="recipe-create-title"><header className="recipe-detail-header"><div><small>Für eure WG</small><h3 id="recipe-create-title">Rezept speichern</h3></div><button className="sheet-close" onClick={() => setCreateOpen(false)} aria-label="Schließen"><X size={18}/></button></header><div className="recipe-create-fields"><label>Name<input value={recipeName} onChange={event => setRecipeName(event.target.value)} placeholder="z. B. Gemüselasagne"/></label><label>Zutaten, eine pro Zeile<textarea value={recipeIngredients} onChange={event => setRecipeIngredients(event.target.value)} placeholder={'2 Tomaten\n250 g Nudeln\n1 EL Olivenöl'} rows={6}/></label><label>Zubereitung (optional)<textarea value={instructions} onChange={event => setInstructions(event.target.value)} rows={4} placeholder="Ein Schritt pro Zeile"/></label><label>Rezeptlink (optional)<input value={source} onChange={event => setSource(event.target.value)} placeholder="https://…"/></label></div><footer className="recipe-detail-footer"><button className="recipe-back-button" onClick={() => setCreateOpen(false)}>Abbrechen</button><button className="recipe-add-button" disabled={!recipeName.trim() || !recipeIngredients.trim()} onClick={saveOwnRecipe}><Check size={16}/> Rezept speichern</button></footer></section></div>, document.body)}
   </section>;
   return embedded?content:typeof document==="undefined"?null:createPortal(content,document.body);

@@ -38,7 +38,10 @@ const measureWords: [RegExp,string][] = [
 
 export function localizeRecipeAmount(raw:string){
   let value=raw.trim().replace(/\s+/g," ");
-  const measurement=value.match(/^((?:\d+\s+)?\d+(?:[.,]\d+)?(?:\/\d+)?)\s*(fluid\s+ounces?|fl\s*oz|ounces?|oz|pounds?|lbs?|lb|stones?|st)\b(.*)$/i);
+  // Older saved amounts could mistake "St" in "Stück" for stone. The
+  // resulting suffix is unambiguous, so recover those quantities on display.
+  value=value.replace(/^(\d+(?:[.,]\d+)?)\s*(kg|g)ück(.*)$/iu,(_match,quantity:string,unit:string,rest:string)=>`${(Number(quantity.replace(",","."))/(unit.toLowerCase()==="kg"?6.35:6350)).toLocaleString("de-AT",{maximumFractionDigits:2})} Stück${rest}`);
+  const measurement=value.match(/^((?:\d+\s+)?\d+(?:[.,]\d+)?(?:\/\d+)?)\s*(fluid\s+ounces?|fl\s*oz|ounces?|oz|pounds?|lbs?|lb|stones?|st)(?![\p{L}\d])(.*)$/iu);
   if(measurement){
     const [whole,...fractional]=measurement[1].trim().split(/\s+/);let quantity=0;
     if(fractional.length){const [numerator,denominator]=fractional[0].split("/").map(Number);quantity=Number(whole)+(denominator?numerator/denominator:0)}

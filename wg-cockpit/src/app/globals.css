@@ -433,3 +433,9 @@ html[data-motion="normal"] .page-stack>*,html[data-motion="normal"] .bring-tile{
 .recipe-tab-refresh{align-self:flex-end}
 
 .recipe-finish-button{display:inline-flex;align-items:center;gap:5px;padding:7px 10px;border:1px solid var(--line);border-radius:9px;background:var(--green-dark);color:white;font-size:11px;font-weight:700;cursor:pointer}
+.recipe-detail-heart{flex:0 0 36px;width:36px;height:36px;border:1px solid var(--line);border-radius:50%;background:var(--card);color:var(--muted);display:grid;place-items:center;cursor:pointer}
+.recipe-detail-heart.active{color:#c43e4e;border-color:#e6b2b8;background:#fff1f3}
+.recipe-detail-heart:disabled{opacity:.5;cursor:default}
+.recipe-detail-header>div{min-width:0;flex:1}
+.recipe-step-portions{display:flex;align-items:center;gap:10px;font-size:12px;font-weight:700}
+.recipe-step-portions button{display:grid;place-items:center;width:34px;height:34px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:inherit;cursor:pointer}

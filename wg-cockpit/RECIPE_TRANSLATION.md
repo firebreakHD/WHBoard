@@ -16,3 +16,5 @@ Optional kann ein eigener LibreTranslate-Dienst genutzt werden:
 Diese Variablen werden ausschließlich serverseitig gelesen. Ohne Konfiguration bleibt MyMemory aktiv. LibreTranslate erkennt die Quellsprache automatisch: https://docs.libretranslate.com/guides/api_usage/ . MyMemory: https://mymemory.translated.net/doc/spec.php .
 
 Die Prüfung berücksichtigt bekannte deutsche, englische und weitere verbreitete Namen für Fisch, Meeresfrüchte und entsprechende Würzsaucen. Sie ist eine Haushaltsfilterregel und keine Allergenprüfung.
+
+Favoriten speichern den Rezeptinhalt zusätzlich zur ID und bleiben bei Quellenausfällen sowie älteren Prüfständen als gespeicherte Karten sichtbar. Unsichere Texte werden bis zur erneuten Prüfung zurückgehalten. Entfernt werden Favoriten über das Herz. „Empfohlen“ nutzt aktuelle Listenartikel, bis zu 100 gemerkte Listenänderungen (davon die letzten 40 für die Auswahl) und die letzten fünf gebuchten Einkäufe. Haushaltsartikel fließen nicht als Zutaten ein; ohne passende Einkaufssignale erscheinen allgemeine Vorschläge.

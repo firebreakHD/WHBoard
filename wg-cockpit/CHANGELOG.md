@@ -1,3 +1,11 @@
+## 0.1.121
+
+- Speichert beim Markieren eines Favoriten das vollständige Rezept; erhält ältere und vorübergehend nicht abrufbare Favoriten sichtbar und lädt fehlende Rezeptdetails anhand der gespeicherten ID nach.
+- Ergänzt ein kleines Favoritenherz oben links im geöffneten Rezept.
+- Passt Zutatenmengen in Zubereitungsschritten und Zutatenlisten an die Portionen an; erhält Temperaturen, Zeiten und Formgrößen. Portionen lassen sich auch in der Zubereitung ändern.
+- Verhindert, dass Stück als englische Gewichtseinheit gelesen wird, und korrigiert dadurch verfälschte ältere Stückangaben bei der Anzeige.
+- Ergänzt Empfohlen mit neun Rezepten aus aktuellen Listenartikeln, gemerkten Hinzufügungen und den letzten fünf gebuchten Einkäufen; unterstützt Aktualisieren und bevorzugt neue Vorschläge.
+
 ## 0.1.120
 
 - Ergänzt Desserts & Kuchen mit neun süßen Rezepten und Aktualisieren durch Herunterziehen; hält Entdecken frei von Desserts, während Saison sie weiter enthalten darf.
